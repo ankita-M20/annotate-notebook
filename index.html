@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.1" />
+    <title>canvas notebook</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="back-btn">
+        <img src="./asserts/left-arrow.png" alt="back-btn" />
+      </div>
+      <div class="notebook">Notebook</div>
+      <div class="head-content">
+        <button id="toggle-drawing" class="drawing-off">
+          <div class="brush-pen" id="brush-pen">
+            <img src="./asserts/fine-pen-tip.png" alt="pen" />
+          </div>
+        </button>
+        <div class="brush-inkpen">
+          <img src="./asserts/fountain-pen.png" alt="ink-pen" />
+        </div>
+        <button id="brush-highlighter" class="drawing-off">
+          <div class="brush-highlighter">
+            <img src="./asserts/marker.png" alt="highlighter" />
+          </div>
+        </button>
+        <div class="eraser">
+          <img src="./asserts/eraser.png" alt="eraser" />
+        </div>
+        <div class="text-design">
+          <img src="./asserts/text.png" alt="Text" />
+        </div>
+        <div class="pen-color" id="yellow"></div>
+        <div class="pen-color" id="red"></div>
+        <div class="pen-color" id="green"></div>
+        <div class="present-screen">
+          <img src="./asserts/projector-screen.png" alt="present-screen" />
+        </div>
+        <div class="undo-btn">
+          <img src="./asserts/undo.png" alt="undo-btn" />
+        </div>
+        <div class="redo-btn">
+          <img src="./asserts/redo.png" alt="redo-btn" />
+        </div>
+      </div>
+      <div class="menu"><img src="./asserts/dots.png" alt="back-btn" /></div>
+    </header>
+    <canvas id="canvas1"></canvas>
+    <script src="script.js"></script>
+  </body>
+</html>

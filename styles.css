@@ -1,0 +1,92 @@
+header {
+  display: flex;
+  justify-content: center; /* Centers the content horizontally */
+  align-items: center; /* Centers the content vertically */
+  background-color: #2196f3;
+  position: fixed;
+  width: 100%; /* Sets the width based on the content */
+  max-width: 100vw; /* Makes sure the width doesn't exceed the viewport width */
+  top: 0px;
+  left: 50%; /* Centers the header in the viewport */
+  transform: translateX(-50%); /* Further adjusts for centering */
+  z-index: 1;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+button {
+  background: transparent;
+  border: none;
+}
+
+/* Style for the button when drawing is off */
+.drawing-off {
+  border: none;
+}
+
+/* Style for the button when drawing is on */
+.drawing-on,
+.selected-brush {
+  border-bottom: 2px solid white;
+}
+
+img {
+  height: 25px;
+  width: 25px;
+  margin: 10px;
+}
+
+.head-content {
+  display: flex;
+  justify-content: center; /* Center the content of .head-content horizontally */
+  align-items: center; /* Center the content of .head-content vertically */
+  flex-grow: 1; /* Allows .head-content to take available space */
+}
+
+.back-btn {
+  justify-content: center;
+  align-content: center;
+}
+
+.menu {
+  display: flex;
+  justify-content: flex-end; /* Positions the content at the end */
+  align-content: center;
+}
+
+.pen-color {
+  width: 17px;
+  height: 17px;
+  border: 3px solid white;
+  border-radius: 50%; /* To make the shape circular */
+  display: inline-block;
+  margin: 10px; /* Add margin for spacing between circles */
+}
+
+#yellow {
+  background-color: yellow;
+}
+
+#red {
+  background-color: red;
+}
+
+#green {
+  background-color: green;
+}
+
+#canvas1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: cornsilk;
+}
+
+.notebook {
+  font-size: 20px;
+  align-items: center;
+  color: white;
+}
+
+.redo-btn img {
+  transform: rotate(0deg);
+}
