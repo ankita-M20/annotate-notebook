@@ -16,9 +16,9 @@ class DrawingCanvas {
     this.isBrush = false;
     this.isEraser = false;
 
-    this.circles = [];
-    this.rectangles = [];
-    this.trianglePoints = [];
+    this.circles = [[[]]];
+    this.rectangles = [[[]]];
+    this.trianglePoints = [[[]]];
 
     this.isDrawingEnabled = false; // Flag to control pointer event
     this.activeButton = null; // Reference to the active button
@@ -37,6 +37,8 @@ class DrawingCanvas {
       this.canvas.height = window.innerHeight;
       this.canvas.width = window.innerWidth;
     });
+
+    console.log(this.circles);
   }
 
   /*--------------------------------------------toggle fuunctions--------------------------------------------------------------------------------------*/
@@ -64,6 +66,7 @@ class DrawingCanvas {
     this.mouse.y = event.clientY;
 
     console.log("handle Pointer");
+    console.log("brush", this.isBrush);
     if (
       this.isDrawingCircle &&
       !this.isDrawingRect &&
@@ -73,14 +76,8 @@ class DrawingCanvas {
     ) {
       this.drawCircle("red", 2);
     } //
-    else if (
-      !this.isDrawingCircle &&
-      !this.isDrawingRect &&
-      !this.isDrawingTriangle &&
-      this.isBrush &&
-      !this.isEraser
-    ) {
-      this.drawCircle("green", 5); //("rgba(0, 255, 255, 0.1)", 20);
+    if (this.isBrush) {
+      this.drawCircle("rgba(130, 255, 132, 0.2)", 50);
     } else if (
       !this.isDrawingCircle &&
       !this.isDrawingRect &&
@@ -88,7 +85,7 @@ class DrawingCanvas {
       !this.isBrush &&
       this.isEraser
     ) {
-      this.drawCircle("cornsilk", 30);
+      this.drawCircle("cornsilk", 60);
     } else if (
       !this.isDrawingCircle &&
       this.isDrawingRect &&
@@ -122,6 +119,8 @@ class DrawingCanvas {
         }
       }
     }
+    console.log(this.circles);
+    console.log(this.rectangles);
   };
 
   /*-----------------------functions------------------------------------------------------*/
@@ -130,10 +129,7 @@ class DrawingCanvas {
   }
 
   drawCircle(strokeColor, lineWidth) {
-    if (!this.isDrawingCircle) {
-      return; // Don't draw if drawing mode is off
-    }
-
+    console.log("circle");
     this.ctx.strokeStyle = strokeColor;
     this.ctx.lineWidth = lineWidth;
     this.ctx.lineCap = "round";
