@@ -51,7 +51,7 @@ class DrawingCanvas {
         this.rectangles = []; // Clear rectangles
       } else if (this.isDrawingTriangle) {
         this.trianglePoints = [];
-      } else if (this.isDrawingCircle) {
+      } else if (this.isDrawingCircle || this.isBrush || this.isEraser) {
         this.circles = []; // Clear circles
       }
     } else {
@@ -59,11 +59,11 @@ class DrawingCanvas {
     }
   }
 
-  //samjha
   handlePointerMove = (event) => {
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
 
+    console.log("handle Pointer");
     if (
       this.isDrawingCircle &&
       !this.isDrawingRect &&
@@ -80,7 +80,7 @@ class DrawingCanvas {
       this.isBrush &&
       !this.isEraser
     ) {
-      this.drawCircle("rgba(0, 255, 255, 0.1)", 20);
+      this.drawCircle("green", 5); //("rgba(0, 255, 255, 0.1)", 20);
     } else if (
       !this.isDrawingCircle &&
       !this.isDrawingRect &&
@@ -322,19 +322,26 @@ const brushHighlighter = document.getElementById("brush-highlighter");
 brushHighlighter.addEventListener("click", () => {
   canvas1.startDrawing(brushHighlighter);
 });
-// Add event listener for triangle button
+/* Add event listener for triangle button
 const triangleButton = document.getElementById("triangle-button");
 triangleButton.addEventListener("click", () => {
   canvas1.startDrawing(triangleButton);
+});*/
+
+const paintBrushButton = document.getElementById("paintbrush");
+paintBrushButton.addEventListener("click", () => {
+  console.log("event listner paint");
+  canvas1.startDrawing(paintBrushButton);
 });
 
 const eraseButton = document.getElementById("erase-button");
 eraseButton.addEventListener("click", () => {
+  console.log("event listner erase");
   canvas1.startDrawing(eraseButton);
 });
 
-// Add event listener for clearing the canvas
+/* Add event listener for clearing the canvas
 const clearButton = document.getElementById("clear-button");
 clearButton.addEventListener("click", () => {
   canvas1.clearCanvas();
-});
+});*/
