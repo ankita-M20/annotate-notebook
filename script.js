@@ -9,16 +9,20 @@ class DrawingCanvas {
       x: null,
       y: null,
     };
+    this.activeDrawingMode = null; // Track the active drawing mode (circle or rectangle)
 
-    this.isDrawing = false; // Flag to control circle drawing mode
-    this.isDrawingRect = false; // Flag to control rectangle drawing mode
-    this.circles = [];
-    this.rectangles = []; // Clear rectangles
+    this.shapes = []; // Stores all drawn shapes (circles and rectangles)
+    this.strokes = [[]];
+    this.undoStack = [];
+    this.redoStack = [];
 
-    this.isDrawingEnabled = false; // Flag to control pointer event
+    this.isDrawingEnabled = false; // Flag to control pointer events
     this.activeButton = null; // Reference to the active button
 
-    this.canvas.addEventListener("click", () => {
+    this.canvas.addEventListener("pointerdown", (event) => {
+      if (this.isDrawingEnabled) {
+        this.handlePointerDown(event);
+      }
       this.toggleDrawing();
     });
 
@@ -28,206 +32,214 @@ class DrawingCanvas {
       }
     });
 
-    /*this.canvas.addEventListener("click", (event) => {
-      this.mouse.x = event.x;
-      this.mouse.y = event.y;
-      if (this.isDrawing && !this.isDrawingRect) {
-        this.drawCircle();
-      } else if (this.isDrawing && this.isDrawingRect) {
-        this.drawRect();
-      }
-      //this.drawCircle();
-    });
-
-    this.canvas.addEventListener("pointermove", (event) => {
-      this.mouse.x = event.x;
-      this.mouse.y = event.y;
-      if (this.isDrawing && !this.isDrawingRect) {
-        this.drawCircle();
-      } else if (!this.isDrawing && this.isDrawingRect) {
-        this.drawRect();
-      }
-    });*/
-
     window.addEventListener("resize", () => {
-      this.canvas.height = window.innerHeight;
-      this.canvas.width = window.innerWidth;
+      this.resizeCanvas();
     });
+
+    this.resizeCanvas();
   }
 
-  toggleDrawing() {
-    this.isDrawingEnabled = !this.isDrawingEnabled;
-
-    if (!this.isDrawingEnabled) {
-      // Disable the pointer event and clear the shapes array based on the drawing mode
-      this.canvas.removeEventListener("pointermove", this.handlePointerMove);
-      if (this.isDrawingRect) {
-        this.rectangles = []; // Clear rectangles
-      } else {
-        this.circles = []; // Clear circles
-      }
-    } else {
-      this.canvas.addEventListener("pointermove", this.handlePointerMove);
-    }
+  setActiveButton(button) {
+    this.activeButton = button;
   }
 
-  handlePointerMove = (event) => {
+  // Method to set a fixed canvas size
+  resizeCanvas() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  handlePointerDown(event) {
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
 
-    if (this.isDrawing && !this.isDrawingRect) {
-      this.drawCircle();
-    } else if (!this.isDrawing && this.isDrawingRect) {
-      this.drawRect();
-    } else {
-      if (this.rectangles.length >= 1) {
-        const firstRect = this.rectangles[0];
-        const distance = Math.sqrt(
-          (firstRect.x - this.mouse.x) ** 2 + (firstRect.y - this.mouse.y) ** 2
-        );
-        if (distance > 30) {
-          this.rectangles.shift(); // Remove the first rectangle
-        }
-      }
+    if (this.activeDrawingMode === "circle") {
+      this.startDrawingCircle();
+    } else if (this.activeDrawingMode === "rectangle") {
+      this.startDrawingRectangle();
     }
-  };
-
-  drawCircle() {
-    if (!this.isDrawing) {
-      return; // Don't draw if drawing mode is off
-    }
-    this.ctx.strokeStyle = "red"; // "rgba(0, 255, 255, 0.1)";
-    //"red";
-    this.ctx.lineWidth = 15;
-    this.ctx.lineCap = "round";
-    this.ctx.lineJoin = "round";
-
-    if (this.circles.length >= 1) {
-      const lastCircle = this.circles[this.circles.length - 1];
-      this.ctx.beginPath();
-      this.ctx.moveTo(lastCircle.x, lastCircle.y);
-      this.ctx.lineTo(this.mouse.x, this.mouse.y);
-      this.ctx.stroke();
-    }
-
-    // Store the current mouse position as a circle
-    this.circles.push({ x: this.mouse.x, y: this.mouse.y });
-  }
-  drawRect() {
-    if (!this.isDrawingRect) {
-      return; // Don't draw rectangles if rectangle drawing mode is off
-    }
-
-    // Set the fill color with transparency (e.g., 30% transparent cyan)
-    this.ctx.fillStyle = "rgba(0, 255, 255, 0.3)";
-    //this.highlightCtx.fillStyle = "rgba(0, 255, 255, 0.3)";
-
-    // Set line width to 0 for filled rectangles
-    this.ctx.lineWidth = 0;
-    this.ctx.lineCap = "round";
-    this.ctx.lineJoin = "round";
-
-    // Calculate the fixed size for the rectangle
-    const rectWidth = 35; // Set the width of the rectangle
-    const rectHeight = 20; // Set the height of the rectangle
-
-    // Initialize the position for the new rectangle
-    let rectX = this.mouse.x;
-    let rectY = this.mouse.y;
-
-    // Calculate the position for the new rectangle immediately adjacent to the previous one
-    if (this.rectangles.length >= 1) {
-      const lastRect = this.rectangles[this.rectangles.length - 1];
-
-      // Calculate the x-coordinate for the new rectangle
-      rectX = lastRect.x; //+ rectWidth;
-
-      // Check if the new rectangle would go out of the canvas
-      if (rectX + rectWidth > this.canvas.width) {
-        // Start a new row of rectangles
-        rectX = 0;
-        rectY = lastRect.y + rectHeight;
-      }
-
-      // Fill the gap between the new rectangle and the previous one
-      if (rectX > lastRect.x + lastRect.width) {
-        const gapWidth = rectX - (lastRect.x + lastRect.width);
-        this.ctx.fillRect(
-          lastRect.x + lastRect.width,
-          rectY,
-          gapWidth,
-          rectHeight
-        );
-      }
-    }
-
-    // Draw the filled rectangle at the calculated position
-    this.ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
   }
 
-  /*
-    if (this.circles.length >= 1) {
-      const lastCircle = this.circles[this.circles.length - 1];
-      this.ctx.beginPath();
-      this.ctx.moveTo(lastCircle.x, lastCircle.y);
-      this.ctx.lineTo(this.mouse.x, this.mouse.y);
-      this.ctx.stroke();
+  handlePointerMove(event) {
+    this.mouse.x = event.clientX;
+    this.mouse.y = event.clientY;
+
+    if (this.isDrawingEnabled) {
+      if (this.activeDrawingMode === "circle") {
+        this.continueDrawingCircle();
+      } else if (this.activeDrawingMode === "rectangle") {
+        this.continueDrawingRectangle();
+      }
     }
+  }
 
-    // Store the current mouse position as a rectangle start point
-    this.circles.push({ x: this.mouse.x, y: this.mouse.y });
-  }*/
+  // Start drawing a circle
+  startDrawingCircle() {
+    const circle = new Circle(this.ctx, this.mouse.x, this.mouse.y);
+    this.shapes.push(circle);
+  }
 
-  /*startDrawing() {
-    this.isDrawing = !this.isDrawing; // Toggle drawing mode on button click
-    const toggleDrawingButton = document.getElementById("toggle-drawing");
+  // Continue drawing a circle
+  continueDrawingCircle() {
+    const currentCircle = this.shapes[this.shapes.length - 1];
+    currentCircle.update(this.mouse.x, this.mouse.y);
+  }
 
-    if (!this.isDrawing) {
-      // Clear the canvas when drawing mode is turned off
-      toggleDrawingButton.classList.remove("drawing-on");
-      toggleDrawingButton.classList.add("drawing-off");
+  // Start drawing a rectangle
+  startDrawingRectangle() {
+    const rectangle = new Rectangle(this.ctx, this.mouse.x, this.mouse.y);
+    this.shapes.push(rectangle);
+  }
+
+  // Continue drawing a rectangle
+  continueDrawingRectangle() {
+    const currentRectangle = this.shapes[this.shapes.length - 1];
+    currentRectangle.update(this.mouse.x, this.mouse.y);
+  }
+
+  // Toggle drawing mode based on the selected button
+  toggleDrawing() {
+    this.isDrawingEnabled = !this.isDrawingEnabled;
+  }
+
+  // Undo the last action
+  undo() {
+    if (this.shapes.length > 0) {
+      const lastShape = this.shapes.pop();
+      this.undoStack.push(lastShape);
+      this.redrawShapes();
+    }
+  }
+
+  // Redo the last undone action
+  redo() {
+    if (this.undoStack.length > 0) {
+      const undoneShape = this.undoStack.pop();
+      this.shapes.push(undoneShape);
+      this.redrawShapes();
+    }
+  }
+
+  // Redraw all shapes on the canvas
+  redrawShapes() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    for (const shape of this.shapes) {
+      shape.draw();
+    }
+  }
+
+  // Set the active drawing button
+  setActiveButton(button) {
+    this.activeButton = button;
+  }
+
+  setActiveButton(button) {
+    if (button === "brush-highlighter") {
+      this.activeDrawingMode = "circle"; // For example, set circle mode for brush-highlighter
+    } else if (button === "paintbrush") {
+      this.activeDrawingMode = "rectangle"; // Set rectangle mode for paintbrush
+    } else if (button === "erase") {
+      // Set your erase mode logic here
     } else {
-      toggleDrawingButton.classList.remove("drawing-off");
-      toggleDrawingButton.classList.add("drawing-on");
+      this.activeDrawingMode = null; // Reset to null for other buttons
     }
-  }*/
-  startDrawing(targetButton) {
-    const toggleDrawingButton = document.getElementById("toggle-drawing");
-    const brushHighlighter = document.getElementById("brush-highlighter");
-
-    if (targetButton === toggleDrawingButton) {
-      this.isDrawing = !this.isDrawing; // Toggle drawing mode
-      toggleDrawingButton.classList.toggle("drawing-on");
-      toggleDrawingButton.classList.toggle("drawing-off");
-
-      // Ensure the other drawing mode is off
-      this.isDrawingRect = false;
-      brushHighlighter.classList.remove("selected-brush");
-    } else if (targetButton === brushHighlighter) {
-      this.isDrawingRect = !this.isDrawingRect; // Toggle rectangle drawing mode
-      brushHighlighter.classList.toggle("selected-brush");
-
-      // Ensure circle drawing mode is off
-      this.isDrawing = false;
-      toggleDrawingButton.classList.remove("drawing-on");
-      toggleDrawingButton.classList.add("drawing-off");
-    }
-
-    // Set the active button
-    this.activeButton = targetButton;
   }
 }
+
+class Shape {
+  constructor(ctx, startX, startY) {
+    this.ctx = ctx;
+    this.startX = startX;
+    this.startY = startY;
+  }
+
+  draw() {
+    // To be implemented by subclasses
+  }
+
+  update() {
+    // To be implemented by subclasses
+  }
+}
+
+class Circle extends Shape {
+  constructor(ctx, startX, startY) {
+    super(ctx, startX, startY);
+    this.radius = 0;
+  }
+
+  draw() {
+    this.ctx.beginPath();
+    this.ctx.arc(this.startX, this.startY, this.radius, 0, Math.PI * 2);
+    this.ctx.stroke();
+  }
+
+  update(currentX, currentY) {
+    this.radius = Math.sqrt(
+      Math.pow(currentX - this.startX, 2) + Math.pow(currentY - this.startY, 2)
+    );
+    this.draw();
+  }
+}
+
+class Rectangle extends Shape {
+  constructor(ctx, startX, startY) {
+    super(ctx, startX, startY);
+    this.width = 0;
+    this.height = 0;
+  }
+
+  draw() {
+    this.ctx.strokeRect(this.startX, this.startY, this.width, this.height);
+  }
+
+  update(currentX, currentY) {
+    this.width = currentX - this.startX;
+    this.height = currentY - this.startY;
+    this.draw();
+  }
+}
+
 // Create an instance of the DrawingCanvas class and specify the canvas ID
 const canvas1 = new DrawingCanvas("canvas1");
-//canvas1.startDrawing();
+//unnessary
+const circleButton = document.getElementById("circle-button");
+circleButton.addEventListener("click", () => {
+  canvas1.setActiveButton(circleButton);
+});
+
+const rectangleButton = document.getElementById("rectangle-button");
+rectangleButton.addEventListener("click", () => {
+  canvas1.setActiveButton(rectangleButton);
+});
+
+const undoButton = document.getElementById("undo-btn");
+undoButton.addEventListener("click", () => {
+  canvas1.undo();
+});
+
+const redoButton = document.getElementById("redo-btn");
+redoButton.addEventListener("click", () => {
+  canvas1.redo();
+});
+
+const brushHighlighterButton = document.getElementById("brush-highlighter");
+brushHighlighterButton.addEventListener("click", () => {
+  canvas1.setActiveButton("brush-highlighter");
+});
+
+const paintbrushButton = document.getElementById("paintbrush");
+paintbrushButton.addEventListener("click", () => {
+  canvas1.setActiveButton("paintbrush");
+});
+
+const eraseButton = document.getElementById("erase-button");
+eraseButton.addEventListener("click", () => {
+  canvas1.setActiveButton("erase");
+});
 
 const toggleDrawingButton = document.getElementById("toggle-drawing");
 toggleDrawingButton.addEventListener("click", () => {
-  canvas1.startDrawing(toggleDrawingButton);
-});
-
-// Add event listener to toggle between drawing circles and rectangles
-const brushHighlighter = document.getElementById("brush-highlighter");
-brushHighlighter.addEventListener("click", () => {
-  canvas1.startDrawing(brushHighlighter);
+  canvas1.toggleDrawing();
 });

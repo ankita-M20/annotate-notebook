@@ -12,18 +12,23 @@ class DrawingCanvas {
 
     this.isDrawingCircle = false; // Flag to control circle drawing mode
     this.isDrawingRect = false; // Flag to control rectangle drawing mode
-    this.isDrawingTriangle = false;
     this.isBrush = false;
     this.isEraser = false;
 
-    this.circles = [[[]]];
-    this.rectangles = [[[]]];
-    this.trianglePoints = [[[]]];
+    this.circles = [[]];
+    this.rectangles = [[]];
+
+    this.strokes = [[]];
+    this.undoStack = [];
+    this.redoStack = [];
 
     this.isDrawingEnabled = false; // Flag to control pointer event
     this.activeButton = null; // Reference to the active button
 
     this.canvas.addEventListener("click", () => {
+      if (this.isDrawingEnabled) {
+        this.handleDrawingClick();
+      }
       this.toggleDrawing();
     });
 
@@ -38,10 +43,63 @@ class DrawingCanvas {
       this.canvas.width = window.innerWidth;
     });
 
-    console.log(this.circles);
+    this.resizeCanvas();
+
+    window.addEventListener("load", () => {
+      canvas1.resizeCanvasToFitContent();
+    });
+
+    // console.log("rect", this.rectangles);
+  }
+
+  // Method to set a fixed canvas size
+  resizeCanvas() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  resizeCanvasToFitContent() {
+    // Create an off-screen canvas with the desired dimensions
+    const newCanvas = document.createElement("canvas");
+    newCanvas.width = this.canvas.width;
+    newCanvas.height = this.canvas.height;
+    const newCtx = newCanvas.getContext("2d");
+
+    // Draw the current canvas content onto the off-screen canvas
+    newCtx.drawImage(this.canvas, 0, 0);
+
+    // Get the content (drawings) from the off-screen canvas
+    const imageData = newCtx.getImageData(
+      0,
+      0,
+      newCanvas.width,
+      newCanvas.height
+    );
+
+    // Resize the original canvas to the new dimensions
+    this.canvas.width = newCanvas.width;
+    this.canvas.height = newCanvas.height;
+
+    // Draw the content (drawings) back onto the original canvas
+    this.ctx.putImageData(imageData, 0, 0);
   }
 
   /*--------------------------------------------toggle fuunctions--------------------------------------------------------------------------------------*/
+  handleDrawingClick() {
+    // Store the current stroke in the strokes array
+    const currentStroke = {
+      type: this.activeButton.id, // Store the type of the stroke (circle, rectangle, etc.)
+      data: this.isBrush ? [] : this.circles.slice(), // Store the data for the current stroke (e.g., circle points)
+    };
+
+    this.strokes.push(currentStroke);
+
+    // Clear redo stack since a new stroke is added
+    this.redoStack = [];
+
+    console.log("stokes", this.strokes);
+  }
+
   //for click events only
   toggleDrawing() {
     this.isDrawingEnabled = !this.isDrawingEnabled;
@@ -51,8 +109,6 @@ class DrawingCanvas {
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       if (this.isDrawingRect) {
         this.rectangles = []; // Clear rectangles
-      } else if (this.isDrawingTriangle) {
-        this.trianglePoints = [];
       } else if (this.isDrawingCircle || this.isBrush || this.isEraser) {
         this.circles = []; // Clear circles
       }
@@ -66,7 +122,7 @@ class DrawingCanvas {
     this.mouse.y = event.clientY;
 
     console.log("handle Pointer");
-    console.log("brush", this.isBrush);
+    // console.log("brush", this.isBrush);
     if (
       this.isDrawingCircle &&
       !this.isDrawingRect &&
@@ -94,42 +150,84 @@ class DrawingCanvas {
       !this.isEraser
     ) {
       this.drawRect();
-    } else if (
-      !this.isDrawingCircle &&
-      !this.isDrawingRect &&
-      this.isDrawingTriangle &&
-      !this.isBrush &&
-      !this.isEraser
-    ) {
-      // Add the current mouse position to the triangle points array
-      this.trianglePoints.push({ x: this.mouse.x, y: this.mouse.y });
-      if (this.trianglePoints.length === 3) {
-        this.drawTriangle();
-        this.trianglePoints = [this.trianglePoints[2]]; // Start a new triangle with the last point
-      }
-    } // extra rect
-    else {
-      if (this.rectangles.length >= 1) {
-        const firstRect = this.rectangles[0];
-        const distance = Math.sqrt(
-          (firstRect.x - this.mouse.x) ** 2 + (firstRect.y - this.mouse.y) ** 2
-        );
-        if (distance > 30) {
-          this.rectangles.shift(); // Remove the first rectangle
-        }
-      }
     }
-    console.log(this.circles);
-    console.log(this.rectangles);
   };
 
   /*-----------------------functions------------------------------------------------------*/
+
   clearCanvas() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  undo() {
+    if (this.strokes.length > 0) {
+      const lastStroke = this.strokes.pop();
+
+      // Push the undone stroke to the redo stack
+      this.redoStack.push(lastStroke);
+
+      // Clear the canvas
+      this.clearCanvas();
+
+      // Redraw the remaining strokes
+      for (const stroke of this.strokes) {
+        if (stroke.type === "circle") {
+          for (const circle of stroke.data) {
+            this.drawCircle("red", 2, circle.x, circle.y);
+          }
+        } else if (stroke.type === "rectangle") {
+          // Redraw rectangles if needed
+        } else if (stroke.type === "brush") {
+          // Redraw brush strokes if needed
+        }
+      }
+    }
+  }
+
+  redo() {
+    if (this.redoStack.length > 0) {
+      const nextStroke = this.redoStack.pop();
+
+      // Push the redone stroke back to the strokes array
+      this.strokes.push(nextStroke);
+
+      // Clear the canvas
+      this.clearCanvas();
+
+      // Redraw all strokes (including the redone ones)
+      for (const stroke of this.strokes) {
+        if (stroke.type === "circle") {
+          for (const circle of stroke.data) {
+            this.drawCircle("red", 2, circle.x, circle.y);
+          }
+        } else if (stroke.type === "rectangle") {
+          // Redraw rectangles if needed
+        } else if (stroke.type === "brush") {
+          // Redraw brush strokes if needed
+        }
+      }
+    }
+  }
+
+  redrawStrokes() {
+    for (const stroke of this.strokes) {
+      if (stroke.data) {
+        // Check if stroke.data is defined
+        this.setDrawingMode(stroke.type);
+
+        if (!this.isBrush) {
+          this.circles = stroke.data;
+          this.drawCircle(
+            stroke.type === "brush" ? "rgba(130, 255, 132, 0.2)" : "red",
+            2
+          );
+        }
+      }
+    }
+  }
+
   drawCircle(strokeColor, lineWidth) {
-    console.log("circle");
+    //console.log("circle");
     this.ctx.strokeStyle = strokeColor;
     this.ctx.lineWidth = lineWidth;
     this.ctx.lineCap = "round";
@@ -199,49 +297,22 @@ class DrawingCanvas {
     this.ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
   }
 
-  // New method to draw a triangle
-  drawTriangle() {
-    if (this.trianglePoints.length < 3) {
-      // Need at least 3 points to draw a triangle
-      return;
-    }
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(this.trianglePoints[0].x, this.trianglePoints[0].y);
-
-    for (let i = 1; i < 3; i++) {
-      this.ctx.lineTo(this.trianglePoints[i].x, this.trianglePoints[i].y);
-    }
-
-    this.ctx.closePath();
-
-    if (this.fillColor.checked) {
-      this.ctx.fill();
-    } else {
-      this.ctx.stroke();
-    }
-  }
-
   /*--------------------------Drawing toggle part handling-----------------------------------------------------------------*/
   startDrawing(targetButton) {
     const toggleDrawingButton = document.getElementById("toggle-drawing");
     const brushHighlighter = document.getElementById("brush-highlighter");
-    const triangleButton = document.getElementById("triangle-highlighter");
     const paintBrushButton = document.getElementById("paintbrush");
     const eraseButton = document.getElementById("erase-button");
 
     if (targetButton === toggleDrawingButton) {
       this.isDrawingCircle = !this.isDrawingCircle; // Toggle drawing mode
       toggleDrawingButton.classList.toggle("selected-brush");
-      //toggleDrawingButton.classList.toggle("drawing-off");
 
       // Ensure the other drawing mode is off
       this.isDrawingRect = false;
-      this.isDrawingTriangle = false;
       this.isBrush = false;
       this.isEraser = false;
       brushHighlighter.classList.remove("selected-brush");
-      triangleButton.classList.remove("selected-brush");
       paintBrushButton.classList.remove("selected-brush");
       eraseButton.classList.remove("selected-brush");
     } //
@@ -250,11 +321,9 @@ class DrawingCanvas {
       brushHighlighter.classList.toggle("selected-brush");
 
       this.isDrawingCircle = false;
-      this.isDrawingTriangle = false;
       this.isBrush = false;
       this.isEraser = false;
       toggleDrawingButton.classList.remove("selected-brush");
-      triangleButton.classList.remove("selected-brush");
       paintBrushButton.classList.remove("selected-brush");
       eraseButton.classList.remove("selected-brush");
     } //
@@ -263,11 +332,9 @@ class DrawingCanvas {
       paintBrushButton.classList.toggle("selected-brush");
 
       this.isDrawingCircle = false;
-      this.isDrawingTriangle = false;
       this.isDrawingRect = false;
       this.isEraser = false;
       toggleDrawingButton.classList.remove("selected-brush");
-      triangleButton.classList.remove("selected-brush");
       brushHighlighter.classList.remove("selected-brush");
       eraseButton.classList.remove("selected-brush");
     } //
@@ -276,27 +343,12 @@ class DrawingCanvas {
       eraseButton.classList.toggle("selected-brush");
 
       this.isDrawingCircle = false;
-      this.isDrawingTriangle = false;
       this.isDrawingRect = false;
       this.isBrush = false;
       toggleDrawingButton.classList.remove("selected-brush");
-      triangleButton.classList.remove("selected-brush");
       brushHighlighter.classList.remove("selected-brush");
       paintBrushButton.classList.remove("selected-brush");
     } //
-    else if (targetButton === triangleButton) {
-      this.isDrawingTriangle = !this.isDrawingTriangle;
-      triangleButton.classList.toggle("selected-triangle");
-
-      this.isDrawingCircle = false;
-      this.isEraser = false;
-      this.isDrawingRect = false;
-      this.isBrush = false;
-      toggleDrawingButton.classList.remove("selected-brush");
-      eraseButton.classList.remove("selected-brush");
-      brushHighlighter.classList.remove("selected-brush");
-      paintBrushButton.classList.remove("selected-brush");
-    }
 
     // Set the active button
     this.activeButton = targetButton;
@@ -318,26 +370,36 @@ const brushHighlighter = document.getElementById("brush-highlighter");
 brushHighlighter.addEventListener("click", () => {
   canvas1.startDrawing(brushHighlighter);
 });
-/* Add event listener for triangle button
-const triangleButton = document.getElementById("triangle-button");
-triangleButton.addEventListener("click", () => {
-  canvas1.startDrawing(triangleButton);
-});*/
 
 const paintBrushButton = document.getElementById("paintbrush");
 paintBrushButton.addEventListener("click", () => {
-  console.log("event listner paint");
+  // console.log("event listner paint");
   canvas1.startDrawing(paintBrushButton);
 });
 
 const eraseButton = document.getElementById("erase-button");
 eraseButton.addEventListener("click", () => {
-  console.log("event listner erase");
+  // console.log("event listner erase");
   canvas1.startDrawing(eraseButton);
 });
+const undoButton = document.getElementById("undo-btn");
+undoButton.addEventListener("click", () => {
+  console.log("undo");
+  canvas1.undo();
+});
 
-/* Add event listener for clearing the canvas
-const clearButton = document.getElementById("clear-button");
-clearButton.addEventListener("click", () => {
-  canvas1.clearCanvas();
-});*/
+const redoButton = document.getElementById("redo-btn");
+redoButton.addEventListener("click", () => {
+  console.log("redo");
+  canvas1.redo();
+});
+
+// JavaScript code for toggling the white box
+document.addEventListener("DOMContentLoaded", function () {
+  const dropdownIcon = document.querySelector(".dropdown-icon");
+  const whiteBox = document.querySelector(".white-box");
+
+  dropdownIcon.addEventListener("click", function () {
+    whiteBox.classList.toggle("hidden");
+  });
+});
