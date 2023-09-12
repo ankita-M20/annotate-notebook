@@ -1,3 +1,210 @@
+//drawing shapes
+class Shape {
+  constructor(canvas, ctx, color, isFilled) {
+    this.canvas = canvas;
+    this.ctx = ctx;
+    this.color = color;
+    this.isFilled = isFilled;
+    this.points = [];
+  }
+}
+
+class Rectangle extends Shape {
+  constructor(canvas, ctx, color, isFilled) {
+    super(canvas, ctx, color, isFilled);
+  }
+
+  draw() {
+    this.ctx.fillStyle = this.color;
+    if (this.isFilled) {
+      this.ctx.fillRect(...this.points);
+    } else {
+      this.ctx.strokeRect(...this.points);
+    }
+  }
+}
+
+class Circle extends Shape {
+  constructor(canvas, ctx, color, isFilled) {
+    super(canvas, ctx, color, isFilled);
+  }
+
+  draw() {
+    this.ctx.fillStyle = this.color;
+    const [x, y, radius] = this.points;
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if (this.isFilled) {
+      this.ctx.fill();
+    } else {
+      this.ctx.stroke();
+    }
+  }
+}
+
+class Triangle extends Shape {
+  constructor(canvas, ctx, color, isFilled) {
+    super(canvas, ctx, color, isFilled);
+  }
+
+  draw() {
+    this.ctx.fillStyle = this.color;
+    const [x1, y1, x2, y2, x3, y3] = this.points;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x1, y1);
+    this.ctx.lineTo(x2, y2);
+    this.ctx.lineTo(x3, y3);
+    this.ctx.closePath();
+    if (this.isFilled) {
+      this.ctx.fill();
+    } else {
+      this.ctx.stroke();
+    }
+  }
+}
+
+//Drawing Strokes using shape
+class DrawingUtility {
+  static drawCircle(ctx, circles, mouse, strokeColor, lineWidth) {
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    if (circles.length >= 1) {
+      const lastCircle = circles[circles.length - 1];
+      ctx.beginPath();
+      ctx.moveTo(lastCircle.x, lastCircle.y);
+      ctx.lineTo(mouse.x, mouse.y);
+      ctx.stroke();
+    }
+
+    // Store the current mouse position as a circle
+    circles.push({ x: mouse.x, y: mouse.y });
+  }
+
+  static drawRect(ctx, rectangles, mouse, isDrawingRect) {
+    if (!isDrawingRect) {
+      return; // Don't draw rectangles if rectangle drawing mode is off
+    }
+
+    // Set the fill color with transparency (e.g., 30% transparent cyan)
+    ctx.fillStyle = "rgba(0, 255, 255, 0.3)";
+
+    // Set line width to 0 for filled rectangles
+    ctx.lineWidth = 0;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Calculate the fixed size for the rectangle
+    const rectWidth = 35; // Set the width of the rectangle
+    const rectHeight = 20; // Set the height of the rectangle
+
+    let rectX = mouse.x - rectWidth / 2;
+    let rectY = mouse.y - rectHeight / 2;
+
+    ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+
+    // Store the current rectangle
+    rectangles.push({
+      x: rectX,
+      y: rectY,
+      width: rectWidth,
+      height: rectHeight,
+    });
+  }
+}
+class DrawingApp {
+  static selectedTool = "brush";
+  static isDrawing = false;
+  static prevX = 0;
+  static prevY = 0;
+  static currentShape = null;
+  static shapes = []; // Array to store drawn shapes
+
+  static setActiveShape(shapeType) {
+    this.selectedTool = shapeType;
+  }
+
+  static startDrawing(event) {
+    this.isDrawing = true;
+    const { offsetX, offsetY } = event;
+
+    switch (this.selectedTool) {
+      case "triangle":
+        this.currentShape = new Triangle(
+          canvas1.canvas,
+          canvas1.ctx,
+          "blue",
+          true
+        );
+        this.currentShape.points.push(offsetX, offsetY);
+        break;
+      case "rectangle":
+        this.currentShape = new Rectangle(
+          canvas1.canvas,
+          canvas1.ctx,
+          "red",
+          true
+        );
+        this.currentShape.points.push(offsetX, offsetY);
+        break;
+      case "circle":
+        this.currentShape = new Circle(
+          canvas1.canvas,
+          canvas1.ctx,
+          "green",
+          true
+        );
+        this.currentShape.points.push(offsetX, offsetY, 0);
+        break;
+      default:
+        break;
+    }
+
+    this.prevX = offsetX;
+    this.prevY = offsetY;
+  }
+
+  static draw(event) {
+    if (!this.isDrawing || !this.currentShape) return;
+
+    const { offsetX, offsetY } = event;
+
+    switch (this.selectedTool) {
+      case "triangle":
+      case "rectangle":
+        this.currentShape.points.push(offsetX, offsetY);
+        break;
+      case "circle":
+        const dx = offsetX - this.prevX;
+        const dy = offsetY - this.prevY;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+        this.currentShape.points[2] = radius;
+        break;
+      default:
+        break;
+    }
+
+    canvas1.clearCanvas();
+    this.currentShape.draw();
+  }
+
+  static stopDrawing() {
+    this.isDrawing = false;
+
+    if (this.currentShape) {
+      // Store the drawn shape
+      // You can implement your storage or further actions here
+      // For now, we'll just clear the canvas
+      //this.currentShape = null;
+      //canvas1.clearCanvas();
+      this.shapes.push(this.currentShape); // Store the drawn shape
+      this.currentShape = null;
+    }
+  }
+}
+
 class DrawingCanvas {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -9,237 +216,332 @@ class DrawingCanvas {
       x: null,
       y: null,
     };
-    this.activeDrawingMode = null; // Track the active drawing mode (circle or rectangle)
 
-    this.shapes = []; // Stores all drawn shapes (circles and rectangles)
+    this.isDrawingCircle = false;
+    this.isDrawingRect = false;
+    this.isBrush = false;
+    this.isEraser = false;
+
+    this.circles = [[]];
+    this.rectangles = [[]];
+
     this.strokes = [[]];
     this.undoStack = [];
     this.redoStack = [];
 
-    this.isDrawingEnabled = false; // Flag to control pointer events
-    this.activeButton = null; // Reference to the active button
+    this.isDrawingEnabled = false;
+    this.activeButton = null;
 
-    this.canvas.addEventListener("pointerdown", (event) => {
+    this.canvas.addEventListener("click", () => {
       if (this.isDrawingEnabled) {
-        this.handlePointerDown(event);
+        this.handleDrawingClick();
       }
       this.toggleDrawing();
     });
 
     this.canvas.addEventListener("pointermove", (event) => {
       if (this.isDrawingEnabled) {
+        DrawingApp.draw(event); // Use DrawingApp draw method
         this.handlePointerMove(event);
       }
     });
 
     window.addEventListener("resize", () => {
-      this.resizeCanvas();
+      this.canvas.height = window.innerHeight;
+      this.canvas.width = window.innerWidth;
     });
-
-    this.resizeCanvas();
   }
 
-  setActiveButton(button) {
-    this.activeButton = button;
+  setActiveShape(shapeType) {
+    this.activeShape = shapeType;
   }
 
-  // Method to set a fixed canvas size
-  resizeCanvas() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+  //Strokes cases
+  handleDrawingClick() {
+    const currentStroke = {
+      type: this.activeButton.id,
+      data: this.isBrush ? [] : this.circles.slice(),
+    };
+
+    this.strokes.push(currentStroke);
+    this.redoStack = [];
   }
 
-  handlePointerDown(event) {
-    this.mouse.x = event.clientX;
-    this.mouse.y = event.clientY;
+  toggleDrawing() {
+    this.isDrawingEnabled = !this.isDrawingEnabled;
 
-    if (this.activeDrawingMode === "circle") {
-      this.startDrawingCircle();
-    } else if (this.activeDrawingMode === "rectangle") {
-      this.startDrawingRectangle();
+    if (!this.isDrawingEnabled) {
+      this.canvas.removeEventListener("pointermove", this.handlePointerMove);
+      if (this.isDrawingRect) {
+        this.rectangles = [];
+      } else if (this.isDrawingCircle || this.isBrush || this.isEraser) {
+        this.circles = [];
+      }
+    } else {
+      this.canvas.addEventListener("pointermove", this.handlePointerMove);
     }
   }
 
-  handlePointerMove(event) {
+  handlePointerMove = (event) => {
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
 
-    if (this.isDrawingEnabled) {
-      if (this.activeDrawingMode === "circle") {
-        this.continueDrawingCircle();
-      } else if (this.activeDrawingMode === "rectangle") {
-        this.continueDrawingRectangle();
+    if (
+      this.isDrawingCircle &&
+      !this.isDrawingRect &&
+      !this.isBrush &&
+      !this.isEraser
+    ) {
+      DrawingUtility.drawCircle(this.ctx, this.circles, this.mouse, "red", 2);
+    }
+
+    if (this.isBrush) {
+      DrawingUtility.drawCircle(
+        this.ctx,
+        this.circles,
+        this.mouse,
+        "rgba(130, 255, 132, 0.2)",
+        50
+      );
+    } else if (
+      !this.isDrawingCircle &&
+      !this.isDrawingRect &&
+      !this.isBrush &&
+      this.isEraser
+    ) {
+      DrawingUtility.drawCircle(
+        this.ctx,
+        this.circles,
+        this.mouse,
+        "cornsilk",
+        60
+      );
+    } else if (
+      !this.isDrawingCircle &&
+      this.isDrawingRect &&
+      !this.isBrush &&
+      !this.isEraser
+    ) {
+      DrawingUtility.drawRect(
+        this.ctx,
+        this.rectangles,
+        this.mouse,
+        this.isDrawingRect
+      );
+    }
+  };
+
+  clearCanvas() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+  //similar to clear canvas
+
+  undo() {
+    if (this.strokes.length > 0) {
+      const lastStroke = this.strokes.pop();
+
+      this.redoStack.push(lastStroke);
+      // this.clearCanvas();
+
+      for (const stroke of this.strokes) {
+        if (stroke.type === "circle") {
+          for (const circle of stroke.data) {
+            this.drawCircle("red", 2, circle.x, circle.y);
+          }
+        } else if (stroke.type === "rectangle") {
+          // Redraw rectangles if needed
+        } else if (stroke.type === "brush") {
+          // Redraw brush strokes if needed
+        }
+      }
+    }
+  }
+  //not working yet
+  redo() {
+    if (this.redoStack.length > 0) {
+      const nextStroke = this.redoStack.pop();
+
+      this.strokes.push(nextStroke);
+      this.clearCanvas();
+
+      for (const stroke of this.strokes) {
+        if (stroke.type === "circle") {
+          for (const circle of stroke.data) {
+            this.drawCircle("red", 2, circle.x, circle.y);
+          }
+        } else if (stroke.type === "rectangle") {
+          // Redraw rectangles if needed
+        } else if (stroke.type === "brush") {
+          // Redraw brush strokes if needed
+        }
+      }
+    }
+  }
+  //doesn't work
+  redrawStrokes() {
+    for (const stroke of this.strokes) {
+      if (stroke.data) {
+        this.setDrawingMode(stroke.type);
+
+        if (!this.isBrush) {
+          this.circles = stroke.data;
+          this.drawCircle(
+            stroke.type === "brush" ? "rgba(130, 255, 132, 0.2)" : "red",
+            2
+          );
+        }
       }
     }
   }
 
-  // Start drawing a circle
-  startDrawingCircle() {
-    const circle = new Circle(this.ctx, this.mouse.x, this.mouse.y);
-    this.shapes.push(circle);
-  }
+  startDrawing(targetButton) {
+    const toggleDrawingButton = document.getElementById("toggle-drawing");
+    const brushHighlighter = document.getElementById("brush-highlighter");
+    const paintBrushButton = document.getElementById("paintbrush");
+    const eraseButton = document.getElementById("erase-button");
 
-  // Continue drawing a circle
-  continueDrawingCircle() {
-    const currentCircle = this.shapes[this.shapes.length - 1];
-    currentCircle.update(this.mouse.x, this.mouse.y);
-  }
+    if (targetButton === toggleDrawingButton) {
+      this.isDrawingCircle = !this.isDrawingCircle;
+      toggleDrawingButton.classList.toggle("selected-brush");
 
-  // Start drawing a rectangle
-  startDrawingRectangle() {
-    const rectangle = new Rectangle(this.ctx, this.mouse.x, this.mouse.y);
-    this.shapes.push(rectangle);
-  }
+      this.isDrawingRect = false;
+      this.isBrush = false;
+      this.isEraser = false;
+      brushHighlighter.classList.remove("selected-brush");
+      paintBrushButton.classList.remove("selected-brush");
+      eraseButton.classList.remove("selected-brush");
+    } else if (targetButton === brushHighlighter) {
+      this.isDrawingRect = !this.isDrawingRect;
+      brushHighlighter.classList.toggle("selected-brush");
 
-  // Continue drawing a rectangle
-  continueDrawingRectangle() {
-    const currentRectangle = this.shapes[this.shapes.length - 1];
-    currentRectangle.update(this.mouse.x, this.mouse.y);
-  }
+      this.isDrawingCircle = false;
+      this.isBrush = false;
+      this.isEraser = false;
+      toggleDrawingButton.classList.remove("selected-brush");
+      paintBrushButton.classList.remove("selected-brush");
+      eraseButton.classList.remove("selected-brush");
+    } else if (targetButton === paintBrushButton) {
+      this.isBrush = !this.isBrush;
+      paintBrushButton.classList.toggle("selected-brush");
 
-  // Toggle drawing mode based on the selected button
-  toggleDrawing() {
-    this.isDrawingEnabled = !this.isDrawingEnabled;
-  }
+      this.isDrawingCircle = false;
+      this.isDrawingRect = false;
+      this.isEraser = false;
+      toggleDrawingButton.classList.remove("selected-brush");
+      brushHighlighter.classList.remove("selected-brush");
+      eraseButton.classList.remove("selected-brush");
+    } else if (targetButton === eraseButton) {
+      this.isEraser = !this.isEraser;
+      eraseButton.classList.toggle("selected-brush");
 
-  // Undo the last action
-  undo() {
-    if (this.shapes.length > 0) {
-      const lastShape = this.shapes.pop();
-      this.undoStack.push(lastShape);
-      this.redrawShapes();
+      this.isDrawingCircle = false;
+      this.isDrawingRect = false;
+      this.isBrush = false;
+      toggleDrawingButton.classList.remove("selected-brush");
+      brushHighlighter.classList.remove("selected-brush");
+      paintBrushButton.classList.remove("selected-brush");
     }
-  }
 
-  // Redo the last undone action
-  redo() {
-    if (this.undoStack.length > 0) {
-      const undoneShape = this.undoStack.pop();
-      this.shapes.push(undoneShape);
-      this.redrawShapes();
-    }
-  }
-
-  // Redraw all shapes on the canvas
-  redrawShapes() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    for (const shape of this.shapes) {
-      shape.draw();
-    }
-  }
-
-  // Set the active drawing button
-  setActiveButton(button) {
-    this.activeButton = button;
-  }
-
-  setActiveButton(button) {
-    if (button === "brush-highlighter") {
-      this.activeDrawingMode = "circle"; // For example, set circle mode for brush-highlighter
-    } else if (button === "paintbrush") {
-      this.activeDrawingMode = "rectangle"; // Set rectangle mode for paintbrush
-    } else if (button === "erase") {
-      // Set your erase mode logic here
-    } else {
-      this.activeDrawingMode = null; // Reset to null for other buttons
-    }
+    this.activeButton = targetButton;
   }
 }
 
-class Shape {
-  constructor(ctx, startX, startY) {
-    this.ctx = ctx;
-    this.startX = startX;
-    this.startY = startY;
-  }
-
-  draw() {
-    // To be implemented by subclasses
-  }
-
-  update() {
-    // To be implemented by subclasses
-  }
-}
-
-class Circle extends Shape {
-  constructor(ctx, startX, startY) {
-    super(ctx, startX, startY);
-    this.radius = 0;
-  }
-
-  draw() {
-    this.ctx.beginPath();
-    this.ctx.arc(this.startX, this.startY, this.radius, 0, Math.PI * 2);
-    this.ctx.stroke();
-  }
-
-  update(currentX, currentY) {
-    this.radius = Math.sqrt(
-      Math.pow(currentX - this.startX, 2) + Math.pow(currentY - this.startY, 2)
-    );
-    this.draw();
-  }
-}
-
-class Rectangle extends Shape {
-  constructor(ctx, startX, startY) {
-    super(ctx, startX, startY);
-    this.width = 0;
-    this.height = 0;
-  }
-
-  draw() {
-    this.ctx.strokeRect(this.startX, this.startY, this.width, this.height);
-  }
-
-  update(currentX, currentY) {
-    this.width = currentX - this.startX;
-    this.height = currentY - this.startY;
-    this.draw();
-  }
-}
-
+/*****************class ends *****************/
 // Create an instance of the DrawingCanvas class and specify the canvas ID
-const canvas1 = new DrawingCanvas("canvas1");
-//unnessary
-const circleButton = document.getElementById("circle-button");
-circleButton.addEventListener("click", () => {
-  canvas1.setActiveButton(circleButton);
+//const canvas1 = new DrawingCanvas("canvas1");
+//canvas1.startDrawing();
+
+const toggleDrawingButton = document.getElementById("toggle-drawing");
+toggleDrawingButton.addEventListener("click", () => {
+  canvas1.startDrawing(toggleDrawingButton);
 });
 
-const rectangleButton = document.getElementById("rectangle-button");
-rectangleButton.addEventListener("click", () => {
-  canvas1.setActiveButton(rectangleButton);
+// Add event listener to toggle between drawing circles and rectangles
+const brushHighlighter = document.getElementById("brush-highlighter");
+brushHighlighter.addEventListener("click", () => {
+  canvas1.startDrawing(brushHighlighter);
 });
 
+const paintBrushButton = document.getElementById("paintbrush");
+paintBrushButton.addEventListener("click", () => {
+  // console.log("event listner paint");
+  canvas1.startDrawing(paintBrushButton);
+});
+
+const eraseButton = document.getElementById("erase-button");
+eraseButton.addEventListener("click", () => {
+  // console.log("event listner erase");
+  canvas1.startDrawing(eraseButton);
+});
 const undoButton = document.getElementById("undo-btn");
 undoButton.addEventListener("click", () => {
+  console.log("undo");
   canvas1.undo();
 });
 
 const redoButton = document.getElementById("redo-btn");
 redoButton.addEventListener("click", () => {
+  console.log("redo");
   canvas1.redo();
 });
 
-const brushHighlighterButton = document.getElementById("brush-highlighter");
-brushHighlighterButton.addEventListener("click", () => {
-  canvas1.setActiveButton("brush-highlighter");
+document.addEventListener("DOMContentLoaded", function () {
+  const dropdownIcon = document.querySelector(".dropdown-icon");
+  const whiteBox = document.querySelector(".white-box");
+  const whiteBoxOptions = whiteBox.querySelectorAll(".options");
+
+  dropdownIcon.addEventListener("click", function () {
+    whiteBox.classList.toggle("hidden");
+  });
+
+  // Add event listeners to options inside the white box
+  whiteBoxOptions.forEach(function (option) {
+    option.addEventListener("click", function () {
+      whiteBox.classList.add("hidden");
+    });
+  });
+
+  // Add event listeners to shape options inside the white box
+  const shapeOptions = whiteBox.querySelectorAll(".sec-options .icons div");
+  shapeOptions.forEach(function (shapeOption) {
+    shapeOption.addEventListener("click", function () {
+      whiteBox.classList.add("hidden");
+    });
+  });
 });
 
-const paintbrushButton = document.getElementById("paintbrush");
-paintbrushButton.addEventListener("click", () => {
-  canvas1.setActiveButton("paintbrush");
+//shapes
+
+// Add event listeners to shape elements
+const radioShape = document.getElementById("radio");
+const rectangleShape = document.getElementById("rectangle");
+const triangleShape = document.getElementById("triangle");
+const circleShape = document.getElementById("circle");
+const ovalShape = document.getElementById("oval");
+
+radioShape.addEventListener("click", () => {
+  canvas1.setActiveShape("radio"); // Set the active shape type
+  closeWhiteBox(); // Close the white container
 });
 
-const eraseButton = document.getElementById("erase-button");
-eraseButton.addEventListener("click", () => {
-  canvas1.setActiveButton("erase");
+rectangleShape.addEventListener("click", () => {
+  canvas1.setActiveShape("rectangle");
+  closeWhiteBox();
 });
 
-const toggleDrawingButton = document.getElementById("toggle-drawing");
-toggleDrawingButton.addEventListener("click", () => {
-  canvas1.toggleDrawing();
+triangleShape.addEventListener("click", () => {
+  canvas1.setActiveShape("triangle");
+  closeWhiteBox();
 });
+
+circleShape.addEventListener("click", () => {
+  canvas1.setActiveShape("circle");
+  closeWhiteBox();
+});
+
+ovalShape.addEventListener("click", () => {
+  canvas1.setActiveShape("oval");
+  closeWhiteBox();
+});
+
+const canvas1 = new DrawingCanvas("canvas1");
