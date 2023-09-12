@@ -115,48 +115,39 @@ class DrawingUtility {
   }
 }
 class DrawingApp {
-  static selectedTool = "brush";
   static isDrawing = false;
   static prevX = 0;
   static prevY = 0;
   static currentShape = null;
   static shapes = []; // Array to store drawn shapes
 
-  static setActiveShape(shapeType) {
+  constructor(activetool) {
+    this.selectedTool = activetool;
+  }
+
+  setActiveShape(shapeType) {
     this.selectedTool = shapeType;
   }
 
-  static startDrawing(event) {
+  static startDrawing(event, ctx) {
     this.isDrawing = true;
     const { offsetX, offsetY } = event;
 
     switch (this.selectedTool) {
       case "triangle":
-        this.currentShape = new Triangle(
-          canvas1.canvas,
-          canvas1.ctx,
-          "blue",
-          true
-        );
+        this.currentShape = new Triangle(ctx.canvas, ctx, "blue", true);
         this.currentShape.points.push(offsetX, offsetY);
+        this.currentShape.draw(); // Add this line to start rendering the shape
         break;
       case "rectangle":
-        this.currentShape = new Rectangle(
-          canvas1.canvas,
-          canvas1.ctx,
-          "red",
-          true
-        );
+        this.currentShape = new Rectangle(ctx.canvas, ctx, "red", true);
         this.currentShape.points.push(offsetX, offsetY);
+        this.currentShape.draw();
         break;
       case "circle":
-        this.currentShape = new Circle(
-          canvas1.canvas,
-          canvas1.ctx,
-          "green",
-          true
-        );
+        this.currentShape = new Circle(ctx.canvas, ctx, "green", true);
         this.currentShape.points.push(offsetX, offsetY, 0);
+        this.currentShape.draw();
         break;
       default:
         break;
@@ -166,7 +157,7 @@ class DrawingApp {
     this.prevY = offsetY;
   }
 
-  static draw(event) {
+  static draw(event, ctx) {
     if (!this.isDrawing || !this.currentShape) return;
 
     const { offsetX, offsetY } = event;
@@ -175,18 +166,18 @@ class DrawingApp {
       case "triangle":
       case "rectangle":
         this.currentShape.points.push(offsetX, offsetY);
+        this.currentShape.draw();
         break;
       case "circle":
         const dx = offsetX - this.prevX;
         const dy = offsetY - this.prevY;
         const radius = Math.sqrt(dx * dx + dy * dy);
         this.currentShape.points[2] = radius;
+        this.currentShape.draw();
         break;
       default:
         break;
     }
-
-    canvas1.clearCanvas();
     this.currentShape.draw();
   }
 
@@ -194,11 +185,6 @@ class DrawingApp {
     this.isDrawing = false;
 
     if (this.currentShape) {
-      // Store the drawn shape
-      // You can implement your storage or further actions here
-      // For now, we'll just clear the canvas
-      //this.currentShape = null;
-      //canvas1.clearCanvas();
       this.shapes.push(this.currentShape); // Store the drawn shape
       this.currentShape = null;
     }
@@ -217,6 +203,7 @@ class DrawingCanvas {
       y: null,
     };
 
+    this.DrawingApp = new DrawingApp(this.activeShape);
     this.isDrawingCircle = false;
     this.isDrawingRect = false;
     this.isBrush = false;
@@ -254,6 +241,9 @@ class DrawingCanvas {
 
   setActiveShape(shapeType) {
     this.activeShape = shapeType;
+    this.DrawingApp.setActiveShape(this.activeShape);
+    console.log(this.activeShape);
+    console.log(this.DrawingApp);
   }
 
   //Strokes cases
@@ -448,8 +438,8 @@ class DrawingCanvas {
 
 /*****************class ends *****************/
 // Create an instance of the DrawingCanvas class and specify the canvas ID
-//const canvas1 = new DrawingCanvas("canvas1");
-//canvas1.startDrawing();
+const canvas1 = new DrawingCanvas("canvas1");
+canvas1.startDrawing();
 
 const toggleDrawingButton = document.getElementById("toggle-drawing");
 toggleDrawingButton.addEventListener("click", () => {
@@ -521,27 +511,22 @@ const ovalShape = document.getElementById("oval");
 
 radioShape.addEventListener("click", () => {
   canvas1.setActiveShape("radio"); // Set the active shape type
-  closeWhiteBox(); // Close the white container
 });
 
 rectangleShape.addEventListener("click", () => {
   canvas1.setActiveShape("rectangle");
-  closeWhiteBox();
 });
 
 triangleShape.addEventListener("click", () => {
   canvas1.setActiveShape("triangle");
-  closeWhiteBox();
 });
 
 circleShape.addEventListener("click", () => {
   canvas1.setActiveShape("circle");
-  closeWhiteBox();
 });
 
 ovalShape.addEventListener("click", () => {
   canvas1.setActiveShape("oval");
-  closeWhiteBox();
 });
 
-const canvas1 = new DrawingCanvas("canvas1");
+//const canvas1 = new DrawingCanvas("canvas1");
