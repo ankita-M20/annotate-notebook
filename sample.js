@@ -9,41 +9,42 @@ class Shape {
   }
 }
 /*
-class Rectangle extends Shape {
-  constructor(canvas, ctx, color, isFilled) {
-    super(canvas, ctx, color, isFilled);
-  }
-
-  draw() {
-    this.ctx.fillStyle = this.color;
-    this.ctx.strokeStyle = this.color;
-
-    if (!this.fillColor) {
-      this.ctx.strokeRect(
-        this.points[0],
-        this.points[1],
-        this.points[2] - this.points[0],
-        this.points[3] - this.points[1]
-      );
-    } else {
-      this.ctx.fillRect(
-        this.points[0],
-        this.points[1],
-        this.points[2] - this.points[0],
-        this.points[3] - this.points[1]
-      );
+  class Rectangle extends Shape {
+    constructor(canvas, ctx, color, isFilled) {
+      super(canvas, ctx, color, isFilled);
     }
-  }
-}*/
+  
+    draw() {
+      this.ctx.fillStyle = this.color;
+      this.ctx.strokeStyle = this.color;
+  
+      if (!this.fillColor) {
+        this.ctx.strokeRect(
+          this.points[0],
+          this.points[1],
+          this.points[2] - this.points[0],
+          this.points[3] - this.points[1]
+        );
+      } else {
+        this.ctx.fillRect(
+          this.points[0],
+          this.points[1],
+          this.points[2] - this.points[0],
+          this.points[3] - this.points[1]
+        );
+      }
+    }
+  }*/
 
 class Rectangle extends Shape {
-  constructor(canvas, ctx, color, isFilled) {
+  constructor(canvas, ctx, color, isFilled, drawingApp) {
     super(canvas, ctx, color);
     this.isDrawing = false;
     // this.startX = 0;
     // this.startY = 0;
     this.points = []; // Array to store the four corners of the rectangle
     this.isFilled = isFilled;
+    this.drawingApp = drawingApp;
   }
 
   startDrawing(x, y) {
@@ -53,9 +54,11 @@ class Rectangle extends Shape {
 
   continueDrawing(x, y) {
     if (!this.isDrawing) return;
+    // this.redrawRectangles(); // Redraw all rectangles
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    this.drawingApp.redrawRectangles();
     console.log("ContinueDrawing function");
 
     // Update the second point (top-right corner)
@@ -68,21 +71,21 @@ class Rectangle extends Shape {
     const height = Math.abs(y2 - y1);
 
     /*quad
-    const x3 = x2;
-    const y3 = y2 + height;
-    const x4 = x1;
-    const y4 = y1 + height;
-*/
+        const x3 = x2;
+        const y3 = y2 + height;
+        const x4 = x1;
+        const y4 = y1 + height;
+    */
     this.ctx.fillStyle = this.color;
     this.ctx.strokeStyle = this.color;
     this.ctx.beginPath();
     //  this.ctx.rect(this.startX, this.startY, width, height);
     /* quad
-   this.ctx.moveTo(x1, y1);
-    this.ctx.lineTo(x2, y2);
-    this.ctx.lineTo(x3, y3);
-    this.ctx.lineTo(x4, y4);
-    this.ctx.closePath();*/
+       this.ctx.moveTo(x1, y1);
+        this.ctx.lineTo(x2, y2);
+        this.ctx.lineTo(x3, y3);
+        this.ctx.lineTo(x4, y4);
+        this.ctx.closePath();*/
 
     this.ctx.moveTo(x1, y1);
     this.ctx.lineTo(x1 + width, y1);
@@ -92,7 +95,7 @@ class Rectangle extends Shape {
 
     if (!this.isFilled) {
       this.ctx.stroke();
-      console.log("new");
+      //   console.log("new");
     } else {
       this.ctx.fill();
     }
@@ -189,7 +192,8 @@ class DrawingApp {
 
     // Clear the canvas only when starting a new drawing session (e.g., switching tools)
     if (!this.currentShape) {
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      // this.redrawRectangles(); // Redraw all rectangles
+      // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
 
     if (
@@ -199,8 +203,8 @@ class DrawingApp {
       // If the current shape is a rectangle and already exists, stop drawing it
       this.currentShape.stopDrawing();
       this.rectangles.push(this.currentShape); // Add the completed rectangle to the array
-      this.redrawRectangles(); // Redraw all rectangles
-      console.log("if conditin ");
+      this.redrawRectangles(); // so only one rect isnt modified everytime
+      //console.log("if conditin ");
     }
 
     switch (this.selectedTool) {
@@ -235,7 +239,7 @@ class DrawingApp {
         this.currentShape.draw(); // Add this line to start rendering the shape
         break;
       case "rectangle":
-        this.currentShape = new Rectangle(ctx.canvas, ctx, "red", false);
+        this.currentShape = new Rectangle(ctx.canvas, ctx, "red", false, this);
         this.currentShape.startDrawing(offsetX, offsetY);
         // this.rectangles.push(this.currentShape); // Add the new rectangle to the array
 
@@ -269,6 +273,7 @@ class DrawingApp {
 
   continueDrawing(event) {
     if (!this.isDrawing) return;
+    this.redrawRectangles();
     console.log("DrawApp continue drawing");
     const { offsetX, offsetY } = event;
     this.currentShape.continueDrawing(offsetX, offsetY);
@@ -280,6 +285,8 @@ class DrawingApp {
     if (this.currentShape) {
       this.shapes.push(this.currentShape); // Store the drawn shape
       this.currentShape = null;
+      console.log("stop");
+      // this.setActiveShape("brush");
     }
   }
   redrawRectangles() {
@@ -395,8 +402,15 @@ class DrawingCanvas {
 
     this.canvas.addEventListener("pointermove", (event) => {
       if (this.isDrawingEnabled) {
-        this.handlePointerMove(event);
-        this.DrawingApp.continueDrawing(event);
+        if (this.DrawingApp.selectedTool === "brush") {
+          this.handlePointerMove(event);
+        } else if (
+          this.DrawingApp.selectedTool === "rectangle" ||
+          this.DrawingApp.selectedTool === "triangle" ||
+          this.DrawingApp.selectedTool === "circle"
+        ) {
+          this.DrawingApp.continueDrawing(event);
+        }
       }
     });
 
@@ -497,10 +511,6 @@ class DrawingCanvas {
       this.currentShape.continueDrawing(this.mouse.x, this.mouse.y);
     }
   };
-
-  clearCanvas() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
 
   //similar to clear canvas
 
