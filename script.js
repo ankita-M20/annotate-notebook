@@ -16,6 +16,8 @@ class Rectangle extends Shape {
 
   draw() {
     this.ctx.fillStyle = this.color;
+    console.log(...this.points);
+
     if (this.isFilled) {
       this.ctx.fillRect(...this.points);
     } else {
@@ -115,11 +117,15 @@ class DrawingUtility {
   }
 }
 class DrawingApp {
-  static isDrawing = false;
-  static prevX = 0;
-  static prevY = 0;
-  static currentShape = null;
-  static shapes = []; // Array to store drawn shapes
+  isDrawing = false;
+  prevX;
+  prevY;
+  snapshot;
+  selectedTool = "brush";
+  brushwidth;
+  currentShape = null;
+  selectedColor = "#000";
+  shapes = []; // Array to store drawn shapes
 
   constructor(activetool) {
     this.selectedTool = activetool;
@@ -129,25 +135,82 @@ class DrawingApp {
     this.selectedTool = shapeType;
   }
 
-  static startDrawing(event, ctx) {
+  startDrawing(event, ctx) {
     this.isDrawing = true;
     const { offsetX, offsetY } = event;
+    console.log("drawing");
 
     switch (this.selectedTool) {
       case "triangle":
         this.currentShape = new Triangle(ctx.canvas, ctx, "blue", true);
-        this.currentShape.points.push(offsetX, offsetY);
+        // Define the side length of the equilateral triangle
+        const sideLength = 200; // You can adjust this value as needed
+
+        // Calculate the height of the equilateral triangle (height = sqrt(3) / 2 * sideLength)
+        const height = (Math.sqrt(3) / 2) * sideLength;
+
+        // Calculate the coordinates of the other two points
+        const vertex1X = offsetX;
+        const vertex1Y = offsetY;
+
+        const vertex2X = offsetX - sideLength / 2;
+        const vertex2Y = offsetY + height;
+
+        const vertex3X = offsetX + sideLength / 2;
+        const vertex3Y = offsetY + height;
+
+        // Push the coordinates into your array
+        this.currentShape.points.push(
+          vertex1X,
+          vertex1Y, // Point 1 (Mouse position)
+          vertex2X,
+          vertex2Y, // Point 2 (Calculated)
+          vertex3X,
+          vertex3Y // Point 3 (Calculated)
+        );
+
         this.currentShape.draw(); // Add this line to start rendering the shape
         break;
       case "rectangle":
-        this.currentShape = new Rectangle(ctx.canvas, ctx, "red", true);
-        this.currentShape.points.push(offsetX, offsetY);
+        ctx.beginPath();
+        this.currentShape = new Rectangle(ctx.canvas, ctx, "red", false);
+        this.currentShape.points.push(
+          event.offsetX,
+          event.offsetY,
+          this.prevX - event.offsetX,
+          this.prevY - event.offsetY
+        );
         this.currentShape.draw();
         break;
       case "circle":
-        this.currentShape = new Circle(ctx.canvas, ctx, "green", true);
-        this.currentShape.points.push(offsetX, offsetY, 0);
+        if (!this.prevX || !this.prevY) break;
+        /*this.currentShape = new Circle(ctx.canvas, ctx, "green", true);
+        const dx = offsetX - this.prevX;
+        const dy = offsetY - this.prevY;
+        const radius = Math.min(Math.sqrt(dx * dx + dy * dy), 100);
+        console.log(dx, dy, radius);
+        //this.currentShape.points[2] = radius;
+        this.currentShape.points.push(offsetX, offsetY, radius);
         this.currentShape.draw();
+        this.prevX = null;
+        this.prevY = null;*/
+
+        ctx.beginPath();
+        this.currentShape = new Circle(ctx.canvas, ctx, "green", true);
+        let radius = Math.sqrt(
+          Math.pow(this.prevX - event.offsetX, 2) +
+            Math.pow(this.prevY - event.offsetY, 2)
+        );
+
+        this.currentShape.points.push(
+          this.prevX,
+          this.prevY,
+          radius,
+          0,
+          2 * Math.PI
+        );
+        this.currentShape.draw();
+        // ctx.arc(prevMouseX, prevMouseY, radius, 0, 2 * Math.PI);
         break;
       default:
         break;
@@ -155,30 +218,8 @@ class DrawingApp {
 
     this.prevX = offsetX;
     this.prevY = offsetY;
-  }
 
-  static draw(event, ctx) {
-    if (!this.isDrawing || !this.currentShape) return;
-
-    const { offsetX, offsetY } = event;
-
-    switch (this.selectedTool) {
-      case "triangle":
-      case "rectangle":
-        this.currentShape.points.push(offsetX, offsetY);
-        this.currentShape.draw();
-        break;
-      case "circle":
-        const dx = offsetX - this.prevX;
-        const dy = offsetY - this.prevY;
-        const radius = Math.sqrt(dx * dx + dy * dy);
-        this.currentShape.points[2] = radius;
-        this.currentShape.draw();
-        break;
-      default:
-        break;
-    }
-    this.currentShape.draw();
+    console.log(this.prevX, this.prevY);
   }
 
   static stopDrawing() {
@@ -219,9 +260,17 @@ class DrawingCanvas {
     this.isDrawingEnabled = false;
     this.activeButton = null;
 
-    this.canvas.addEventListener("click", () => {
+    this.canvas.addEventListener("click", (event) => {
       if (this.isDrawingEnabled) {
-        this.handleDrawingClick();
+        if (this.DrawingApp.selectedTool === "brush") {
+          handleDrawingClick();
+        } else if (
+          this.DrawingApp.selectedTool === "rectangle" ||
+          this.DrawingApp.selectedTool === "triangle" ||
+          this.DrawingApp.selectedTool === "circle"
+        ) {
+          this.DrawingApp.startDrawing(event, this.ctx);
+        }
       }
       this.toggleDrawing();
     });
@@ -233,9 +282,10 @@ class DrawingCanvas {
       }
     });
 
-    window.addEventListener("resize", () => {
-      this.canvas.height = window.innerHeight;
-      this.canvas.width = window.innerWidth;
+    window.addEventListener("load", () => {
+      // setting canvas width/height.. offsetwidth/height returns viewable width/height of an element
+      this.canvas.width = this.canvas.offsetWidth;
+      this.canvas.height = this.canvas.offsetHeight;
     });
   }
 
