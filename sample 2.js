@@ -287,9 +287,62 @@ class Triangle extends Shape {
       this.ctx.stroke();
     }
   }
+}
 
-  resetPoints() {
+class Pen extends Shape {
+  constructor(canvas, ctx, color, lineWidth, DrawingApp) {
+    super(canvas, ctx, color, false); // Pen is not filled
+    this.lineWidth = lineWidth;
     this.points = [];
+    this.DrawingApp = DrawingApp;
+    // this.strokes = []; // Array to store completed strokes
+    // this.currentStroke = []; // Temporary storage for the current stroke
+  }
+
+  startDrawing(x, y) {
+    this.isDrawing = true;
+    this.points = [{ x, y }];
+    this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = this.lineWidth;
+    this.ctx.lineJoin = "round";
+    this.ctx.lineCap = "round";
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, y);
+  }
+
+  continueDrawing(x, y) {
+    if (!this.isDrawing) return;
+    this.points.push({ x, y });
+    this.ctx.lineTo(x, y);
+    this.ctx.stroke();
+  }
+
+  stopDrawing() {
+    if (!this.isDrawing) return;
+    this.isDrawing = false;
+    // Push the current pen stroke into the rectangles array
+    this.DrawingApp.rectangles.push({
+      type: "pen", // You can set the type to "pen" to distinguish it from other shapes
+      color: this.color,
+      lineWidth: this.lineWidth,
+      points: this.points,
+    });
+    this.points = []; // Clear the points for the next stroke
+  }
+  draw() {
+    // Pens are drawn as a sequence of lines connecting points
+    if (this.points.length < 2) return;
+    this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = this.lineWidth;
+    this.ctx.lineJoin = "round";
+    this.ctx.lineCap = "round";
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.points[0].x, this.points[0].y);
+    for (let i = 1; i < this.points.length; i++) {
+      this.ctx.lineTo(this.points[i].x, this.points[i].y);
+    }
+    this.ctx.stroke();
+    this.ctx.closePath();
   }
 }
 
@@ -307,6 +360,12 @@ class DrawingApp {
 
   setActiveShape(shapeType) {
     this.selectedTool = shapeType;
+  }
+
+  storePenStrokes(points, color, lineWidth) {
+    const penShape = new Pen(this.canvas, this.ctx, color, lineWidth, this);
+    penShape.points = points.slice();
+    this.rectangles.push(penShape);
   }
 
   startDrawing(event, ctx) {
@@ -403,68 +462,34 @@ class DrawingApp {
   }
 
   redrawRectangles() {
-    // Clear the canvas
-    //this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.clearCanvas(); // Clear the canvas if needed
 
-    // Draw all rectangles from the array
-    for (const rect of this.rectangles) {
-      rect.draw();
+    // Draw pen strokes
+    for (const shape of this.rectangles) {
+      if (shape.type === "pen") {
+        // Draw pen strokes
+        const pen = new Pen(
+          this.canvas,
+          this.ctx,
+          shape.color,
+          shape.lineWidth,
+          this
+        );
+        pen.points = shape.points.slice(); // Copy the points array
+        pen.draw();
+      }
+    }
+
+    // Draw other shapes (rectangles, circles, etc.)
+    for (const shape of this.rectangles) {
+      if (shape.type !== "pen") {
+        shape.draw(); // Draw other shapes
+      }
     }
   }
 }
 
 //--------------------------------------------------------------------------------------------
-//Drawing Strokes using shape
-class DrawingUtility {
-  static drawCircle(ctx, rectangles, mouse, strokeColor, lineWidth) {
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    if (rectangles.length >= 1) {
-      const lastCircle = rectangles[rectangles.length - 1];
-      ctx.beginPath();
-      ctx.moveTo(lastCircle.x, lastCircle.y);
-      ctx.lineTo(mouse.x, mouse.y);
-      ctx.stroke();
-    }
-
-    // Store the current mouse position as a circle
-    rectangles.push({ x: mouse.x, y: mouse.y });
-  }
-
-  static drawRect(ctx, rectangles, mouse, isDrawingRect) {
-    if (!isDrawingRect) {
-      return; // Don't draw rectangles if rectangle drawing mode is off
-    }
-
-    // Set the fill color with transparency (e.g., 30% transparent cyan)
-    ctx.fillStyle = "rgba(0, 255, 255, 0.3)";
-
-    // Set line width to 0 for filled rectangles
-    ctx.lineWidth = 0;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    // Calculate the fixed size for the rectangle
-    const rectWidth = 35; // Set the width of the rectangle
-    const rectHeight = 20; // Set the height of the rectangle
-
-    let rectX = mouse.x - rectWidth / 2;
-    let rectY = mouse.y - rectHeight / 2;
-
-    ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
-
-    // Store the current rectangle
-    rectangles.push({
-      x: rectX,
-      y: rectY,
-      width: rectWidth,
-      height: rectHeight,
-    });
-  }
-}
 
 class DrawingCanvas {
   constructor(canvasId) {
@@ -474,6 +499,7 @@ class DrawingCanvas {
     this.canvas.width = window.innerWidth;
     this.DrawingApp = new DrawingApp();
     this.DrawingApp = new DrawingApp(this.stopDrawing);
+
     // Change "rectangle" to your desired default tool
     //   this.DrawingApp.setActiveShape("rectangle"); // Set the active tool
 
@@ -483,22 +509,27 @@ class DrawingCanvas {
     };
 
     this.DrawingApp = new DrawingApp(this.activeShape);
-    this.isDrawingCircle = false;
-    this.isDrawingRect = false;
-    this.isBrush = false;
-    this.isEraser = false;
+    //this.isDrawingCircle = false;
+    //this.isDrawingRect = false;
+    //this.isBrush = false;
+    //this.isEraser = false;
 
     //this.circles = [[]];
     this.rectangles = [[]];
 
+    //this.currentStroke = []; // Initialize an empty stroke
     this.strokes = [[]];
-    this.undoStack = [];
-    this.redoStack = [];
+    // this.undoStack = [];
+    //this.redoStack = [];
 
-    this.DrawingShapeRectangle = false;
+    this.DrawingShapeRectangle = false; // this is shapes in general
 
     this.isDrawingEnabled = false;
     this.activeButton = null;
+
+    this.pens = [];
+    this.currentPen = null;
+    this.isDrawingPen = false; // Flag to determine if the current tool is the pen
 
     this.canvas.addEventListener("click", (event) => {
       if (this.isDrawingEnabled) {
@@ -517,7 +548,7 @@ class DrawingCanvas {
     });
 
     this.canvas.addEventListener("pointermove", (event) => {
-      if (this.isDrawingEnabled) {
+      /*if (this.isDrawingEnabled) {
         if (this.DrawingApp.selectedTool === "brush") {
           this.handlePointerMove(event);
         } else if (
@@ -527,12 +558,46 @@ class DrawingCanvas {
         ) {
           this.DrawingApp.continueDrawing(event);
         }
+      }*/
+      if (this.isDrawingEnabled) {
+        if (this.isDrawingPen) {
+          // If drawing with the pen, continue drawing with it
+          const x = event.clientX - this.canvas.getBoundingClientRect().left;
+          const y = event.clientY - this.canvas.getBoundingClientRect().top;
+          this.currentPen.continueDrawing(x, y);
+        } else {
+          // If drawing with another tool, continue drawing with that tool
+          this.DrawingApp.continueDrawing(event);
+        }
       }
     });
 
     this.canvas.addEventListener("pointerdown", (event) => {
       if (this.isDrawingEnabled) {
-        this.DrawingApp.startDrawing(event, this.ctx);
+        if (this.currentPen) {
+          // If a pen is selected, start drawing with it
+          this.isDrawingPen = true;
+          const x = event.clientX - this.canvas.getBoundingClientRect().left;
+          const y = event.clientY - this.canvas.getBoundingClientRect().top;
+          this.currentPen.startDrawing(x, y);
+        } else {
+          // If another shape tool is selected, start drawing with that tool
+          this.isDrawingPen = false;
+          this.DrawingApp.startDrawing(event, this.ctx);
+        }
+      }
+    });
+
+    this.canvas.addEventListener("pointerup", (event) => {
+      if (this.isDrawingEnabled) {
+        // If a pen is selected, stop drawing with it
+        if (this.isDrawingPen) {
+          this.currentPen.stopDrawing();
+          this.pens.push(this.currentPen);
+          this.currentPen = null;
+        } else {
+          this.DrawingApp.stopDrawing();
+        }
       }
     });
 
@@ -542,12 +607,61 @@ class DrawingCanvas {
     });
   }
 
+  redraw() {
+    this.clearCanvas(); // Clear the canvas or draw other background elements as needed
+    // Draw pen strokes
+    for (const shape of this.rectangles) {
+      if (shape.type === "pen") {
+        // Draw pen strokes
+        const pen = new Pen(
+          this.canvas,
+          this.ctx,
+          shape.color,
+          shape.lineWidth,
+          this
+        );
+        pen.points = shape.points.slice(); // Copy the points array
+        pen.draw();
+      }
+    }
+
+    // Draw other shapes (rectangles, circles, etc.)
+    for (const shape of this.rectangles) {
+      if (shape.type !== "pen") {
+        shape.draw(); // Draw other shapes
+      }
+    }
+  }
+
   setActiveShape(shapeType) {
     this.activeShape = shapeType;
     this.DrawingApp.setActiveShape(this.activeShape);
-    this.DrawingApp.stopDrawing();
+
+    // Stop any ongoing pen drawing
+    if (this.isDrawingPen) {
+      this.isDrawingPen = false;
+      this.currentPen.stopDrawing();
+      this.rectangles.push(this.currentPen);
+      this.currentPen = null;
+    }
+
+    // Toggle the drawing mode based on the selected shape or pen tool
+    if (this.activeShape === "pen") {
+      this.toggleDrawing();
+    } else {
+      this.toggleDrawing(true); // Disable drawing when selecting shapes
+    }
+
+    this.redraw(); // Redraw rectangles after changing tools
+
+    //this.DrawingApp.stopDrawing();
     console.log(this.activeShape);
     console.log(this.DrawingApp);
+  }
+
+  setActivePen(penType, color, lineWidth) {
+    // Create a new pen and set it as the current pen
+    this.currentPen = new Pen(this.canvas, this.ctx, color, lineWidth);
   }
 
   //Strokes cases
@@ -693,7 +807,7 @@ class DrawingCanvas {
       this.ctx.closePath();
     }
   }
-
+  //if called after shapes
   startDrawing(targetButton) {
     const toggleDrawingButton = document.getElementById("toggle-drawing");
     const brushHighlighter = document.getElementById("brush-highlighter");
@@ -765,21 +879,31 @@ class DrawingCanvas {
 const canvas1 = new DrawingCanvas("canvas1");
 canvas1.startDrawing();
 
+//first time before shapes
 const toggleDrawingButton = document.getElementById("toggle-drawing");
 toggleDrawingButton.addEventListener("click", () => {
-  canvas1.startDrawing(toggleDrawingButton);
+  //canvas1.startDrawing(toggleDrawingButton);
+  toggleDrawingButton.classList.toggle("selected-brush");
+  paintBrushButton.classList.remove("selected-brush");
+  brushHighlighter.classList.remove("selected-brush");
+  canvas1.setActivePen("pen", "blue", 2); // Blue pen with line width 2
 });
 
 // Add event listener to toggle between drawing circles and rectangles
 const brushHighlighter = document.getElementById("brush-highlighter");
 brushHighlighter.addEventListener("click", () => {
-  canvas1.startDrawing(brushHighlighter);
+  brushHighlighter.classList.toggle("selected-brush");
+  paintBrushButton.classList.remove("selected-brush");
+  toggleDrawingButton.classList.remove("selected-brush");
+  canvas1.setActivePen("pen", "Yellow", 20);
 });
 
 const paintBrushButton = document.getElementById("paintbrush");
 paintBrushButton.addEventListener("click", () => {
-  // console.log("event listner paint");
-  canvas1.startDrawing(paintBrushButton);
+  paintBrushButton.classList.toggle("selected-brush");
+  toggleDrawingButton.classList.remove("selected-brush");
+  brushHighlighter.classList.remove("selected-brush");
+  canvas1.setActivePen("pen", "rgba(0, 225, 255, 0.1)", 60);
 });
 
 const eraseButton = document.getElementById("erase-button");
@@ -839,23 +963,38 @@ const circleShape = document.getElementById("circle");
 const ovalShape = document.getElementById("oval");
 
 radioShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
   canvas1.setActiveShape("radio"); // Set the active shape type
 });
 
 rectangleShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
+
   canvas1.setActiveShape("rectangle");
 });
 
 triangleShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
+
   canvas1.setActiveShape("triangle");
 });
 
 circleShape.addEventListener("click", () => {
-  canvas1.setActiveShape("circle");
-});
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
 
-ovalShape.addEventListener("click", () => {
-  canvas1.setActiveShape("oval");
+  canvas1.setActiveShape("circle");
 });
 
 //const canvas1 = new DrawingCanvas("canvas1");
