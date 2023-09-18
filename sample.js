@@ -67,6 +67,8 @@ class Rectangle extends Shape {
     */
       this.ctx.fillStyle = this.color;
       this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = 2; // Change 2 to your desired line width
+
       this.ctx.beginPath();
       //  this.ctx.rect(this.startX, this.startY, width, height);
       /* quad
@@ -104,6 +106,7 @@ class Rectangle extends Shape {
 
     this.ctx.fillStyle = this.color;
     this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = 2; // Change 2 to your desired line width
     this.ctx.beginPath();
     this.ctx.rect(x1, y1, width, height);
 
@@ -152,6 +155,8 @@ class Circle extends Shape {
       const [centerX, centerY, r] = this.points;
       this.ctx.fillStyle = this.color;
       this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = 2; // Change 2 to your desired line width
+
       this.ctx.beginPath();
       this.ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
       if (this.isFilled) {
@@ -173,6 +178,8 @@ class Circle extends Shape {
     const [centerX, centerY, r] = this.points;
     this.ctx.fillStyle = this.color;
     this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = 2; // Change 2 to your desired line width
+
     this.ctx.beginPath();
     this.ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
 
@@ -227,6 +234,8 @@ class Triangle extends Shape {
     // Draw the current equilateral triangle
     this.ctx.fillStyle = this.color;
     this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = 2; // Change 2 to your desired line width
+
     this.ctx.beginPath();
     const [x1_, y1_, x2_, y2_, x3_, y3_] = this.points;
     this.ctx.moveTo(x1_, y1_);
@@ -274,6 +283,8 @@ class Triangle extends Shape {
 
     this.ctx.fillStyle = this.color;
     this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = 2; // Change 2 to your desired line width
+
     this.ctx.beginPath();
     const [x1, y1, x2, y2, x3, y3] = this.points;
     this.ctx.moveTo(x1, y1);
@@ -287,9 +298,62 @@ class Triangle extends Shape {
       this.ctx.stroke();
     }
   }
+}
 
-  resetPoints() {
+class Pen extends Shape {
+  constructor(canvas, ctx, color, lineWidth, DrawingApp) {
+    super(canvas, ctx, color, false); // Pen is not filled
+    this.lineWidth = lineWidth;
     this.points = [];
+    this.DrawingApp = DrawingApp;
+    // this.strokes = []; // Array to store completed strokes
+    // this.currentStroke = []; // Temporary storage for the current stroke
+  }
+
+  startDrawing(x, y) {
+    this.isDrawing = true;
+    this.points = [{ x, y }];
+    this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = this.lineWidth;
+    this.ctx.lineJoin = "round";
+    this.ctx.lineCap = "round";
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, y);
+  }
+
+  continueDrawing(x, y) {
+    if (!this.isDrawing) return;
+    this.points.push({ x, y });
+    this.ctx.lineTo(x, y);
+    this.ctx.stroke();
+  }
+
+  stopDrawing() {
+    if (!this.isDrawing) return;
+    this.isDrawing = false;
+    // Push the current pen stroke into the rectangles array
+    this.DrawingApp.rectangles.push({
+      type: "pen", // You can set the type to "pen" to distinguish it from other shapes
+      color: this.color,
+      lineWidth: this.lineWidth,
+      points: this.points,
+    });
+    this.points = []; // Clear the points for the next stroke
+  }
+  draw() {
+    // Pens are drawn as a sequence of lines connecting points
+    if (this.points.length < 2) return;
+    this.ctx.strokeStyle = this.color;
+    this.ctx.lineWidth = this.lineWidth;
+    this.ctx.lineJoin = "round";
+    this.ctx.lineCap = "round";
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.points[0].x, this.points[0].y);
+    for (let i = 1; i < this.points.length; i++) {
+      this.ctx.lineTo(this.points[i].x, this.points[i].y);
+    }
+    this.ctx.stroke();
+    this.ctx.closePath();
   }
 }
 
@@ -339,24 +403,54 @@ class DrawingApp {
       this.currentShape.stopDrawing();
       this.rectangles.push(this.currentShape); // Add the completed triangle to the array
       this.redrawRectangles();
+    } else if (
+      this.currentShape &&
+      this.currentShape.constructor.name === "Pen"
+    ) {
+      this.currentShape.stopDrawing();
+      this.rectangles.push(this.currentShape);
+      this.redrawRectangles();
     }
 
     switch (this.selectedTool) {
       case "triangle":
-        this.currentShape = new Triangle(ctx.canvas, ctx, "blue", false, this);
+        this.currentShape = new Triangle(
+          ctx.canvas,
+          ctx,
+          globalcolor,
+          isFilledGlobally,
+          this
+        );
         this.currentShape.startDrawing(offsetX, offsetY);
         break;
 
         break;
       case "rectangle":
-        this.currentShape = new Rectangle(ctx.canvas, ctx, "red", false, this);
+        this.currentShape = new Rectangle(
+          ctx.canvas,
+          ctx,
+          globalcolor,
+          isFilledGlobally,
+          this
+        );
         this.currentShape.startDrawing(offsetX, offsetY);
         break;
       case "circle":
-        this.currentShape = new Circle(ctx.canvas, ctx, "green", false, this);
+        this.currentShape = new Circle(
+          ctx.canvas,
+          ctx,
+          globalcolor,
+          isFilledGlobally,
+          this
+        );
         this.currentShape.startDrawing(offsetX, offsetY);
         break;
-
+      case "pen":
+        this.currentShape = new Pen(ctx.canvas, ctx, "green", 2, this);
+        this.currentShape.startDrawing(offsetX, offsetY);
+        break;
+      case "brush":
+        this.isDrawing = false;
       default:
         break;
     }
@@ -387,6 +481,10 @@ class DrawingApp {
 
   stopDrawing(event) {
     this.isDrawing = false;
+    if (this.currentShape) {
+      this.rectangles.push(this.currentShape); // Add the completed shape to the array
+      this.currentShape = "brush"; // Reset the current shape
+    }
     //this.currentShape.stopDrawing();
   }
 
@@ -402,57 +500,6 @@ class DrawingApp {
 }
 
 //--------------------------------------------------------------------------------------------
-//Drawing Strokes using shape
-class DrawingUtility {
-  static drawCircle(ctx, circles, mouse, strokeColor, lineWidth) {
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    if (circles.length >= 1) {
-      const lastCircle = circles[circles.length - 1];
-      ctx.beginPath();
-      ctx.moveTo(lastCircle.x, lastCircle.y);
-      ctx.lineTo(mouse.x, mouse.y);
-      ctx.stroke();
-    }
-
-    // Store the current mouse position as a circle
-    circles.push({ x: mouse.x, y: mouse.y });
-  }
-
-  static drawRect(ctx, rectangles, mouse, isDrawingRect) {
-    if (!isDrawingRect) {
-      return; // Don't draw rectangles if rectangle drawing mode is off
-    }
-
-    // Set the fill color with transparency (e.g., 30% transparent cyan)
-    ctx.fillStyle = "rgba(0, 255, 255, 0.3)";
-
-    // Set line width to 0 for filled rectangles
-    ctx.lineWidth = 0;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    // Calculate the fixed size for the rectangle
-    const rectWidth = 35; // Set the width of the rectangle
-    const rectHeight = 20; // Set the height of the rectangle
-
-    let rectX = mouse.x - rectWidth / 2;
-    let rectY = mouse.y - rectHeight / 2;
-
-    ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
-
-    // Store the current rectangle
-    rectangles.push({
-      x: rectX,
-      y: rectY,
-      width: rectWidth,
-      height: rectHeight,
-    });
-  }
-}
 
 class DrawingCanvas {
   constructor(canvasId) {
@@ -462,6 +509,7 @@ class DrawingCanvas {
     this.canvas.width = window.innerWidth;
     this.DrawingApp = new DrawingApp();
     this.DrawingApp = new DrawingApp(this.stopDrawing);
+
     // Change "rectangle" to your desired default tool
     //   this.DrawingApp.setActiveShape("rectangle"); // Set the active tool
 
@@ -471,22 +519,27 @@ class DrawingCanvas {
     };
 
     this.DrawingApp = new DrawingApp(this.activeShape);
-    this.isDrawingCircle = false;
-    this.isDrawingRect = false;
-    this.isBrush = false;
-    this.isEraser = false;
+    //this.isDrawingCircle = false;
+    //this.isDrawingRect = false;
+    //this.isBrush = false;
+    //this.isEraser = false;
 
-    this.circles = [[]];
+    //this.circles = [[]];
     this.rectangles = [[]];
 
+    //this.currentStroke = []; // Initialize an empty stroke
     this.strokes = [[]];
-    this.undoStack = [];
-    this.redoStack = [];
+    // this.undoStack = [];
+    //this.redoStack = [];
 
-    this.DrawingShapeRectangle = false;
+    this.DrawingShapeRectangle = false; // this is shapes in general
 
     this.isDrawingEnabled = false;
     this.activeButton = null;
+
+    this.pens = [];
+    this.currentPen = null;
+    this.isDrawingPen = false; // Flag to determine if the current tool is the pen
 
     this.canvas.addEventListener("click", (event) => {
       if (this.isDrawingEnabled) {
@@ -505,7 +558,7 @@ class DrawingCanvas {
     });
 
     this.canvas.addEventListener("pointermove", (event) => {
-      if (this.isDrawingEnabled) {
+      /*if (this.isDrawingEnabled) {
         if (this.DrawingApp.selectedTool === "brush") {
           this.handlePointerMove(event);
         } else if (
@@ -515,12 +568,46 @@ class DrawingCanvas {
         ) {
           this.DrawingApp.continueDrawing(event);
         }
+      }*/
+      if (this.isDrawingEnabled) {
+        if (this.isDrawingPen) {
+          // If drawing with the pen, continue drawing with it
+          const x = event.clientX - this.canvas.getBoundingClientRect().left;
+          const y = event.clientY - this.canvas.getBoundingClientRect().top;
+          this.currentPen.continueDrawing(x, y);
+        } else {
+          // If drawing with another tool, continue drawing with that tool
+          this.DrawingApp.continueDrawing(event);
+        }
       }
     });
 
     this.canvas.addEventListener("pointerdown", (event) => {
       if (this.isDrawingEnabled) {
-        this.DrawingApp.startDrawing(event, this.ctx);
+        if (this.currentPen) {
+          // If a pen is selected, start drawing with it
+          this.isDrawingPen = true;
+          const x = event.clientX - this.canvas.getBoundingClientRect().left;
+          const y = event.clientY - this.canvas.getBoundingClientRect().top;
+          this.currentPen.startDrawing(x, y);
+        } else {
+          // If another shape tool is selected, start drawing with that tool
+          this.isDrawingPen = false;
+          this.DrawingApp.startDrawing(event, this.ctx);
+        }
+      }
+    });
+
+    this.canvas.addEventListener("pointerup", (event) => {
+      if (this.isDrawingEnabled) {
+        // If a pen is selected, stop drawing with it
+        if (this.isDrawingPen) {
+          this.currentPen.stopDrawing();
+          this.pens.push(this.currentPen);
+          this.currentPen = null;
+        } else {
+          this.DrawingApp.stopDrawing();
+        }
       }
     });
 
@@ -530,12 +617,42 @@ class DrawingCanvas {
     });
   }
 
+  redraw() {
+    this.clearCanvas();
+    for (const rect of this.rectangles) {
+      rect.draw();
+    }
+  }
+
   setActiveShape(shapeType) {
     this.activeShape = shapeType;
     this.DrawingApp.setActiveShape(this.activeShape);
-    this.DrawingApp.stopDrawing();
+
+    // Stop any ongoing pen drawing
+    if (this.isDrawingPen) {
+      this.isDrawingPen = false;
+      this.currentPen.stopDrawing();
+      this.rectangles.push(this.currentPen);
+      this.currentPen = null;
+    }
+
+    // Toggle the drawing mode based on the selected shape or pen tool
+    if (this.activeShape === "pen") {
+      this.toggleDrawing();
+    } else {
+      this.toggleDrawing(true); // Disable drawing when selecting shapes
+    }
+
+    this.redraw(); // Redraw rectangles after changing tools
+
+    //this.DrawingApp.stopDrawing();
     console.log(this.activeShape);
     console.log(this.DrawingApp);
+  }
+
+  setActivePen(penType, color, lineWidth) {
+    // Create a new pen and set it as the current pen
+    this.currentPen = new Pen(this.canvas, this.ctx, color, lineWidth);
   }
 
   //Strokes cases
@@ -692,6 +809,7 @@ class DrawingCanvas {
       this.isDrawingCircle = !this.isDrawingCircle;
       toggleDrawingButton.classList.toggle("selected-brush");
 
+      this.DrawingApp.stopDrawing();
       this.isDrawingRect = false;
       this.isBrush = false;
       this.isEraser = false;
@@ -701,6 +819,7 @@ class DrawingCanvas {
     } else if (targetButton === brushHighlighter) {
       this.isDrawingRect = !this.isDrawingRect;
       brushHighlighter.classList.toggle("selected-brush");
+      this.DrawingApp.stopDrawing();
 
       this.isDrawingCircle = false;
       this.isBrush = false;
@@ -711,6 +830,7 @@ class DrawingCanvas {
     } else if (targetButton === paintBrushButton) {
       this.isBrush = !this.isBrush;
       paintBrushButton.classList.toggle("selected-brush");
+      this.DrawingApp.stopDrawing();
 
       this.isDrawingCircle = false;
       this.isDrawingRect = false;
@@ -721,6 +841,7 @@ class DrawingCanvas {
     } else if (targetButton === eraseButton) {
       this.isEraser = !this.isEraser;
       eraseButton.classList.toggle("selected-brush");
+      this.DrawingApp.stopDrawing();
 
       this.isDrawingCircle = false;
       this.isDrawingRect = false;
@@ -751,13 +872,32 @@ canvas1.startDrawing();
 
 const toggleDrawingButton = document.getElementById("toggle-drawing");
 toggleDrawingButton.addEventListener("click", () => {
-  canvas1.startDrawing(toggleDrawingButton);
+  //canvas1.startDrawing(toggleDrawingButton);
+  toggleDrawingButton.classList.toggle("selected-brush");
+  brushHighlighter.classList.remove("selected-brush");
+  eraseButton.classList.remove("selected-brush");
+
+  canvas1.setActivePen("pen", "blue", 2); // Blue pen with line width 2
 });
 
 // Add event listener to toggle between drawing circles and rectangles
 const brushHighlighter = document.getElementById("brush-highlighter");
 brushHighlighter.addEventListener("click", () => {
-  canvas1.startDrawing(brushHighlighter);
+  brushHighlighter.classList.toggle("selected-brush");
+  toggleDrawingButton.classList.remove("selected-brush");
+  eraseButton.classList.remove("selected-brush");
+  canvas1.setActivePen("pen", "yellow", 20); // Blue pen with line width 2
+  //canvas1.startDrawing(brushHighlighter);
+});
+
+const eraseButton = document.getElementById("erase-button");
+eraseButton.addEventListener("click", () => {
+  // console.log("event listner erase");
+  // canvas1.startDrawing(eraseButton);
+  eraseButton.classList.toggle("selected-brush");
+  toggleDrawingButton.classList.remove("selected-brush");
+  brushHighlighter.classList.remove("selected-brush");
+  canvas1.setActivePen("pen", "cornsilk", 50); // Blue pen with line width 2
 });
 
 const paintBrushButton = document.getElementById("paintbrush");
@@ -766,11 +906,6 @@ paintBrushButton.addEventListener("click", () => {
   canvas1.startDrawing(paintBrushButton);
 });
 
-const eraseButton = document.getElementById("erase-button");
-eraseButton.addEventListener("click", () => {
-  // console.log("event listner erase");
-  canvas1.startDrawing(eraseButton);
-});
 const undoButton = document.getElementById("undo-btn");
 undoButton.addEventListener("click", () => {
   console.log("undo");
@@ -823,23 +958,70 @@ const circleShape = document.getElementById("circle");
 const ovalShape = document.getElementById("oval");
 
 radioShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
   canvas1.setActiveShape("radio"); // Set the active shape type
 });
 
 rectangleShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
+
   canvas1.setActiveShape("rectangle");
 });
 
 triangleShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
+
   canvas1.setActiveShape("triangle");
 });
 
 circleShape.addEventListener("click", () => {
+  if (canvas1.currentPen) {
+    canvas1.currentPen.stopDrawing();
+    canvas1.currentPen = null;
+  }
+
   canvas1.setActiveShape("circle");
 });
 
-ovalShape.addEventListener("click", () => {
-  canvas1.setActiveShape("oval");
-});
-
 //const canvas1 = new DrawingCanvas("canvas1");
+// Define a global variable to track the fill state
+let isFilledGlobally = false;
+
+// Function to update the global isFilled variable
+function updateIsFilled() {
+  const fillCheckbox = document.getElementById("fill");
+  isFilledGlobally = fillCheckbox.checked;
+}
+
+// Add an event listener to the checkbox
+document.getElementById("fill").addEventListener("change", updateIsFilled);
+
+// Define a global variable to track the selected color
+let globalcolor = "black"; // Default color
+
+// Function to update the global color variable
+function updateColor(event) {
+  const selectedColor = event.target.id;
+  if (
+    selectedColor === "yellow" ||
+    selectedColor === "red" ||
+    selectedColor === "green"
+  ) {
+    globalcolor = selectedColor;
+  }
+}
+
+// Add event listeners to the color div elements
+const colorDivs = document.querySelectorAll(".pen-color");
+colorDivs.forEach((div) => {
+  div.addEventListener("click", updateColor);
+});
