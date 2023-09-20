@@ -41,7 +41,7 @@
         <div class="text-design">
           <img src="./asserts/text.png" alt="Text" />
         </div>
-        <div class="dropdown-menu">
+        <div class="dropdown-menu" id="dropdown-menu">
           <div class="dropdown-icon">
             <img src="/asserts/down-arrow (1).png" />
           </div>
@@ -74,6 +74,12 @@
                 </div>
                 <div class="sec-options">
                   <div class="sub-title">Shapes</div>
+
+                  <div class="fill-checkbox">
+                    <input type="checkbox" id="fill" />
+                    <label for="fill">Fill:</label>
+                  </div>
+
                   <div class="row 1">
                     <div class="icons">
                       <div class="radio" id="radio">
@@ -146,7 +152,10 @@
       </div>
       <div class="menu"><img src="./asserts/dots.png" alt="back-btn" /></div>
     </header>
-    <canvas id="canvas1"></canvas>
-    <script src="sample 2.js"></script>
+    <canvas id="canvas1" width="800" height="600"></canvas>
+    <!--   <script src="shapes.js"></script>
+    <script src="strokes.js"></script>
+    <script src="canvas.js"></script>-->
+    <script type="module" src="sample.js"></script>
   </body>
 </html>
