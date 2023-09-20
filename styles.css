@@ -207,3 +207,21 @@ img {
   border-bottom: 1px solid #ccc;
   padding-bottom: 10px;
 }
+
+/* Style the container for the checkbox and label */
+.fill-checkbox {
+  display: flex;
+  align-items: center; /* Align items vertically in the center */
+  margin-left: 20px;
+}
+
+/* Style the checkbox */
+.fill-checkbox input[type="checkbox"] {
+  order: 1; /* Change the order to move the checkbox to the end */
+  margin-right: 8px; /* Add some spacing between checkbox and label */
+}
+
+/* Style the label */
+.fill-checkbox label {
+  order: 2; /* Change the order to move the label after the checkbox */
+}
