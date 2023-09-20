@@ -426,8 +426,8 @@ class DrawingApp {
 
     // Draw other shapes (rectangles, circles, etc.)
     for (const shape of this.rectangles) {
-      if (shape.type !== "pen") {
-        // console.log(shape, "hi");
+      if (shape.type !== "pen" && shape !== "brush") {
+        console.log(shape, "shape draw hi");
         shape.draw(); // Draw other shapes
       }
     }
@@ -566,11 +566,14 @@ class DrawingCanvas {
     this.activeShape = shapeType;
     this.drawingApp.setActiveShape(this.activeShape);
 
+    console.log("drawingpen", this.isDrawingPen);
+
     // Stop any ongoing pen drawing
     if (this.isDrawingPen) {
       this.isDrawingPen = false;
-      this.currentPen.stopDrawing();
+      this.drawingApp.stopDrawing();
       this.rectangles.push(this.currentPen);
+      console.log("stop pen");
       this.currentPen = null;
     }
 
@@ -585,11 +588,13 @@ class DrawingCanvas {
 
     //this.DrawingApp.stopDrawing();
     console.log(this.activeShape, "oy");
-    console.log(this.DrawingApp, "yo");
+    console.log(this.drawingApp, "yo");
   }
 
   setActivePen(penType, color, lineWidth) {
     // Create a new pen and set it as the current pen
+    this.drawingApp.stopDrawing();
+
     this.currentPen = new Pen(
       this.canvas,
       this.ctx,
